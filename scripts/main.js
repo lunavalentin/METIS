@@ -96,13 +96,18 @@ function dialog(html, onSubmit) {
 function showLogin() {
   dialog(`
     <h2>${t('login')}</h2>
-    <label>${t('username')}<input name="u" autocomplete="username" required></label>
+    <label>${t('username')}<input name="u" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
     <label>${t('password')}<input name="p" type="password" autocomplete="current-password" required></label>
     <p class="err"></p>
     <menu><button type="button" data-cancel>${t('cancel')}</button><button>${t('login')}</button></menu>`,
     async fd => {
       try { await state.backend.login(fd.get('u'), fd.get('p')); }
-      catch { throw new Error(t('loginError')); }
+      catch (e) {
+        console.warn('login failed', e.code, e.message);
+        // Wrong username/password → friendly message; anything else (network, API key, config) → show the code.
+        const cred = ['auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'];
+        throw new Error(cred.includes(e.code) ? t('loginError') : `${t('loginError')} (${e.code || e.message})`);
+      }
     });
 }
 
