@@ -22,8 +22,11 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
 - [x] 3. World map (`WorldMap`, public dots; all + private marked for super-admins), visitor → read-only public project + back button,
       member → own project only (logout → world), super-admin switcher (world / projects / new), last project remembered.
       **19/19 live checks** (headless Chrome + live Firebase; github.io referer injected on googleapis calls only).
-- [ ] 4. "Nouveau projet" form + JSON import/export; keys encrypted in the browser; "Tester la connexion".
-- [ ] 5. **Project base module (admin side)**: after creating a project, set up its base:
+- [x] 4. "Nouveau projet" (switcher → ＋): form + JSON import, address search (Nominatim), accounts count, cloud keys;
+      "Tester la connexion" = unsigned upload with the preset + signed delete with the keys; keys encrypted (RSA-OAEP) before saving.
+      **11/11 live checks** (preset OK, fake keys refused → creation blocked, created without keys, duplicate id refused).
+- [x] 5. **Project base module (admin side)** — ⚙ Réglages → Base. **13/13 live checks** (levels, PNG + 2-page PDF plans,
+      placement editor, home view, sample, charter, limits, level deletion).: after creating a project, set up its base:
       - upload floor plans (images/PDF pages) to the project's Cloudinary;
       - define levels (names FR/EN, order) and attach a plan to each;
       - place/align each plan on the map (drag, rotate, scale, opacity; replaces the `?align=` tool);

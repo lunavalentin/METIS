@@ -2,7 +2,8 @@
 // Resource types: images & panos → "image"; video & audio → "video" (Cloudinary files audio
 // under video); IRs → "raw" so the WAV is delivered byte-exact (no transcoding of 4-ch files).
 
-export const RESOURCE_TYPE = { photo: 'image', pano: 'image', video: 'video', audio: 'video', ir: 'raw' };
+// plan = floor plan image, sample = dry sound offered in Acoustique (both uploaded by admins in the project base module).
+export const RESOURCE_TYPE = { photo: 'image', pano: 'image', video: 'video', audio: 'video', ir: 'raw', plan: 'image', sample: 'video' };
 
 // Uploads an already-checked file (see media.js). onProgress(0..1).
 export async function uploadMedia(config, type, file, onProgress = () => {}) {

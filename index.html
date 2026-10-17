@@ -207,6 +207,36 @@
     .metis-world-pin:hover span { transform: scale(1.2); }
     @keyframes glow { 50% { box-shadow: 0 0 0 3px #0d0e12, 0 0 34px rgba(255, 111, 181, .6); } }
     .world-tip { border-radius: var(--r-sm) !important; text-align: center; }
+    /* ---------- super-admin panel ---------- */
+    #admin { position: absolute; z-index: 850; top: calc(max(var(--gutter), env(safe-area-inset-top)) + 70px); right: var(--gutter); bottom: var(--gutter);
+      width: min(520px, calc(100% - 2 * var(--gutter))); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-lg);
+      padding: 0 1rem 1.25rem; background: var(--surface-solid); animation: slide .28s cubic-bezier(.2, .8, .2, 1); }
+    #admin header { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem;
+      padding: 1rem 1rem .75rem; margin: 0 -1rem; background: linear-gradient(var(--surface-solid) 70%, transparent); }
+    #admin h2 { margin: .1rem 0 0; font-family: var(--display); font-size: 1.6rem; font-weight: 600; }
+    #admin label { display: block; margin: .6rem 0; font-size: .8rem; color: var(--muted); }
+    #admin input:not([type=checkbox]):not([type=file]):not([type=range]), #admin textarea, #admin select { display: block; width: 100%; margin-top: .3rem;
+      padding: .55em .7em; background: var(--surface-2); border: 1px solid transparent; border-radius: var(--r-sm); color: var(--fg); }
+    #admin .check { display: flex; gap: .5rem; align-items: center; color: var(--fg); }
+    #admin .level, #admin .sample { background: var(--surface-2); border-radius: var(--r); padding: .6rem .8rem; margin: .5rem 0; }
+    #admin .level-plan { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .4rem 0; font-size: .82rem; }
+    #admin .level-plan img { width: 64px; height: 44px; object-fit: cover; border-radius: 6px; background: #fff; }
+    #admin .sample audio { width: 100%; height: 34px; }
+    .upload-btn { display: inline-block !important; padding: .45em 1em; border-radius: 999px; background: var(--surface-2); color: var(--fg) !important;
+      font-weight: 500; font-size: .85rem !important; cursor: pointer; margin: .3rem 0 !important; }
+    .upload-btn:hover { background: var(--line); }
+    #admin.busy { pointer-events: none; opacity: .6; }
+    .sticky-save { position: sticky; bottom: -1.25rem; padding: .7rem 0; background: linear-gradient(transparent, var(--surface-solid) 35%); }
+    .acc-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: .6rem 0; }
+    .acc-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: .75rem; padding: .3rem; }
+    .acc-table td { padding: .3rem; border-top: 1px solid var(--line); } .acc-table td button { padding: .2em .55em; margin-left: .2rem; }
+    .acc-table code { font-size: .85rem; }
+    .limits-row.two { grid-template-columns: 1fr 1fr !important; } .limits-row.three { grid-template-columns: 1fr 1fr 1fr !important; }
+    .search-row { display: flex; gap: .4rem; } .search-row input { flex: 1; }
+    .search-results button { display: block; width: 100%; text-align: left; border-radius: var(--r-sm); margin: .2rem 0; font-size: .8rem; }
+    .test-out.ok { color: #8fe3b0; } .test-out.warn { color: #ffb4c8; }
+    body.admin-open .leaflet-bottom.leaflet-right { right: calc(min(520px, 100% - 2 * var(--gutter)) + 2 * var(--gutter)); }
+    .align-panel .row-actions { margin-top: .6rem; } .align-panel .hint { margin: .3rem 0; }
     .confirm-msg { font-size: 1rem; line-height: 1.5; margin: .2rem 0 1rem; }
     #confirm { width: min(420px, calc(100% - 2 * var(--gutter))); }
 
@@ -346,6 +376,7 @@
     <div id="hint" class="toast glass" hidden></div>
     <div id="notice" class="toast glass" hidden></div>
     <aside id="panel" class="glass" hidden></aside>
+    <aside id="admin" class="glass" hidden></aside>
   </main>
   <dialog id="dialog"></dialog>
   <dialog id="confirm"></dialog>

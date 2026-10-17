@@ -189,7 +189,8 @@ export class MetisMap {
     const p = structuredClone(ov.metis.placement);
     const img = new Image();
     img.src = ov.metis.url;
-    const ratio = () => (img.naturalWidth ? img.naturalHeight / img.naturalWidth : p.heightM / p.widthM);
+    const startRatio = p.heightM / p.widthM;      // until the image has loaded, keep the stored aspect ratio
+    const ratio = () => (img.naturalWidth ? img.naturalHeight / img.naturalWidth : startRatio);
     const handle = L.marker(p.center, {
       draggable: true, zIndexOffset: 1000,
       icon: L.divIcon({ className: 'align-handle', html: '<span></span>', iconSize: [22, 22], iconAnchor: [11, 11] }),

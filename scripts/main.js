@@ -73,6 +73,7 @@ async function route() {
   if (b.readOnly && b.staticProjectId) return openProject(b.staticProjectId);
   if (!u) return showWorld();
   if (u.role === 'admin') {
+    state.projects = await b.listAllProjects();     // for the switcher
     const last = store.get('metis.lastProject');
     if (last && await b.getProjectDoc(last)) return openProject(last);
     return showWorld();
@@ -83,32 +84,42 @@ async function route() {
 
 function teardownMaps() {
   state.unwatchPoints?.(); state.unwatchPoints = null;
+  $('#admin').hidden = true; document.body.classList.remove('admin-open');
   closePoint();
   state.map?.destroy(); state.map = null;
   state.world?.destroy(); state.world = null;
   toggleAdding(false);
 }
 
+// Navigation calls can overlap (login while the world loads, quick saves, double clicks): each one takes a ticket and
+// gives up after an await if a newer navigation started, so only the latest builds the map.
+let navTicket = 0;
+
 async function showWorld() {
-  const b = state.backend, admin = isAdmin(state.user);
+  const b = state.backend, admin = isAdmin(state.user), ticket = ++navTicket;
+  const projects = admin ? await b.listAllProjects() : await b.listPublicProjects();
+  if (ticket !== navTicket) return;
   teardownMaps(); notice('');
   state.view = 'world'; state.config = null; b.useProject(null);
-  state.projects = admin ? await b.listAllProjects() : await b.listPublicProjects();
+  state.projects = projects;
   state.world = new WorldMap($('#map'), state.projects, { onProjectClick: p => openProject(p.id), isAdmin: admin });
   renderHeader();
   if (!state.projects.length) notice(t(admin ? 'noProjectsAdmin' : 'noPublicProjects'));
 }
 
 async function openProject(pid) {
-  const b = state.backend, u = state.user;
+  const b = state.backend, u = state.user, ticket = ++navTicket;
   const doc = await b.getProjectDoc(pid);
+  if (ticket !== navTicket) return;
   if (!doc) { if (u && u.role !== 'admin') { teardownMaps(); renderHeader(); return notice(t('projectUnavailable')); } return showWorld(); }
-  teardownMaps(); notice('');
+  const member = u && (u.role === 'admin' || u.project === pid);
   b.useProject(pid);
+  const uploadSettings = member ? (await b.getSettings()).cloudinary || {} : {};
+  if (ticket !== navTicket) return;
+  teardownMaps(); notice('');
   state.view = 'project';
   state.config = toProjectConfig(state.site, doc, pid);
-  const member = u && (u.role === 'admin' || u.project === pid);
-  state.config.uploadSettings = member ? (await b.getSettings()).cloudinary || {} : {};
+  state.config.uploadSettings = uploadSettings;
   state.config.canWrite = !!member && !b.readOnly && (u.role === 'admin' || state.config.project.status === 'active');
   state.map = new MetisMap($('#map'), state.config, {
     onPointClick: openPoint,
@@ -354,6 +365,7 @@ async function deletePlace() {
 }
 
 function openPoint(point) {
+  if (!$('#admin').hidden) return;                 // project settings open: map clicks do not open places
   state.point = point;
   state.acousticsIR = null;
   state.unwatchItems?.();
