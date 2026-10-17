@@ -1,5 +1,13 @@
 # METIS change log
 
+## 2026-10-17 — v0.4.1 blue → purple → pink scale
+
+Luna preferred a blue–purple–pink scale to the rainbow.
+- The `--rainbow` gradient became `--scale` (#4fc3ff → #5b8cff → #8b7bff → #c48bff → #ff6fb5); `button.rainbow` became `button.grad`.
+- New type colours along the scale: audio #4fc3ff, IR #5b8cff, text #8b7bff, 360° #b57bff, video #e07bff, photo #ff6fb5.
+- The active-level marker, the volume slider and the EDC curve use the same scale (no more yellow or green).
+- Re-ran the headless UI walkthrough: everything passes, with no errors.
+
 ## 2026-10-17 — v0.4 place panel rework, admin editing, rainbow highlights, CAVIAR
 
 Asked by Luna: admins can remove or correct anything; colourful dots and rainbow highlights; everything FR/EN; new tab

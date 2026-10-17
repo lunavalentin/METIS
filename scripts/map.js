@@ -41,11 +41,11 @@ const RecenterControl = L.Control.extend({
 // Tooltip strings are rendered as HTML by Leaflet; names come from users.
 const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// One rainbow hue per media type (shared by pins, tabs, cards and chips).
-export const TYPE_COLORS = { photo: '#ff5ea8', video: '#ff8a3d', pano: '#ffd23f', ir: '#3ddc97', audio: '#36c5f0', text: '#9b7bff' };
+// One hue per media type along the blue → purple → pink scale (shared by pins, tabs, cards and chips).
+export const TYPE_COLORS = { photo: '#ff6fb5', video: '#e07bff', pano: '#b57bff', ir: '#5b8cff', audio: '#4fc3ff', text: '#8b7bff' };
 const TYPE_ORDER = ['photo', 'video', 'pano', 'ir', 'audio', 'text'];
 
-// Pin = ring split into one coloured segment per media type the place holds; empty places get a faint rainbow ring.
+// Pin = ring split into one coloured segment per media type the place holds; empty places get a faint gradient ring.
 function pinStyle(types) {
   const ts = TYPE_ORDER.filter(x => types.includes(x));
   if (!ts.length) return '';

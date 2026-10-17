@@ -89,7 +89,7 @@ export async function mountAnalysis(el, ir, t) {
   const cv = el.querySelector('canvas'), g = cv.getContext('2d');
   const W = cv.width, H = cv.height, n = r.edc.length, dbMin = -70;
   const grad = g.createLinearGradient(0, 0, W, 0);
-  ['#8b9dff', '#36c5f0', '#3ddc97', '#ffd23f', '#ff8a3d', '#ff5ea8'].forEach((c, i, a) => grad.addColorStop(i / (a.length - 1), c));
+  ['#4fc3ff', '#5b8cff', '#8b7bff', '#c48bff', '#ff6fb5'].forEach((c, i, a) => grad.addColorStop(i / (a.length - 1), c));
   g.clearRect(0, 0, W, H); g.strokeStyle = grad; g.lineWidth = 2; g.beginPath();
   for (let px = 0; px < W; px++) {
     const v = Math.max(dbMin, r.edc[Math.floor(px / W * (n - 1))]);

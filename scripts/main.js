@@ -361,9 +361,9 @@ function actions(it) {
   const btns = [];
   if (it.type === 'pano') {
     btns.push(`<button data-act="expand" data-id="${it.id}">${t('expand')}</button>`);
-    if (linkedIR(it, visibleItems())) btns.push(`<button data-act="caviar" data-id="${it.id}" class="rainbow">${t('openCaviar')}</button>`);
+    if (linkedIR(it, visibleItems())) btns.push(`<button data-act="caviar" data-id="${it.id}" class="grad">${t('openCaviar')}</button>`);
   }
-  if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="rainbow">${t('listenHere')}</button>`);
+  if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="grad">${t('listenHere')}</button>`);
   if (u && !state.backend.readOnly) {
     if (canEditItem(u, it)) btns.push(`<button data-act="edit" data-id="${it.id}">${t('edit')}</button>`);
     if (isStaff(u)) btns.push(`<button data-act="${it.hidden ? 'unhide' : 'hide'}" data-id="${it.id}">${t(it.hidden ? 'unhide' : 'hide')}</button>`);
@@ -483,7 +483,7 @@ function renderAcoustics(el, items) {
     <div class="aur">
       <label>${t('chooseIR')}<select class="ir-pick">${irs.map(it => `<option value="${it.id}" ${it.id === cur.id ? 'selected' : ''}>${esc(it.meta?.title || it.author?.displayName)} · ${esc(it.irInfo?.format)}</option>`).join('')}</select></label>
       <p class="ir-meta">${t('by')} ${esc(cur.author?.displayName)}${cur.irInfo?.method ? ` · ${esc(t('method_' + cur.irInfo.method))}` : ''}${cur.irInfo?.receiver ? ` · ${esc(cur.irInfo.receiver)}` : ''}</p>
-      ${pano ? `<button class="wide rainbow open-caviar">${t('openCaviar')}</button><p class="hint small">${t('caviarAvailable')}</p>` : ''}
+      ${pano ? `<button class="wide grad open-caviar">${t('openCaviar')}</button><p class="hint small">${t('caviarAvailable')}</p>` : ''}
       <div class="player"></div>
     </div>
     <div class="analysis"></div>`;
