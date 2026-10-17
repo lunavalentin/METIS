@@ -154,5 +154,6 @@
   "fix_adminOverride": "Envoyer tel quel (admin)",
   "adminOverridden": "limite levée par un·e admin",
   "lim_adminTooBig": "Même pour un·e admin, le maximum est {max} par fichier.",
-  "lim_adminHint": "Admin : vous pouvez envoyer plus lourd ou plus long, jusqu’à {max} Mo."
+  "lim_adminHint": "Admin : vous pouvez envoyer plus lourd ou plus long, jusqu’à {max} Mo.",
+  "networkError": "Connexion interrompue pendant l'envoi (3 essais). Vérifiez le réseau et réessayez."
 }

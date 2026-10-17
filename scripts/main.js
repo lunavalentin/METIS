@@ -135,7 +135,7 @@ function dialog(html, onSubmit, { el = '#dialog' } = {}) {
     e.preventDefault();
     const btn = form.querySelector('menu button:last-child'); if (btn) btn.disabled = true;
     try { if ((await onSubmit(new FormData(form), form)) !== false) d.close(); }
-    catch (err) { console.error(err); form.querySelector('.err').textContent = ({ UPLOAD_NOT_CONFIGURED: t('uploadNotConfigured'), IMAGE_DECODE: t('imageDecode') })[err.message] || err.message; }
+    catch (err) { console.error(err); form.querySelector('.err').textContent = ({ UPLOAD_NOT_CONFIGURED: t('uploadNotConfigured'), IMAGE_DECODE: t('imageDecode'), NETWORK: t('networkError') })[err.message] || err.message; }
     finally { if (btn) btn.disabled = false; }
   });
   d.showModal();

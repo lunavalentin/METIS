@@ -19,14 +19,25 @@ export async function uploadMedia(config, type, file, onProgress = () => {}) {
   form.append('upload_preset', uploadPreset);
   form.append('folder', `${folder}/${type}`);
 
-  const res = await new Promise((resolve, reject) => {
+  // School Wi-Fi drops requests now and then: retry network failures (not Cloudinary refusals) twice, 1.5 s then 4 s later.
+  const attempt = () => new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`);
     xhr.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded / e.total);
-    xhr.onload = () => (xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error(xhr.responseText)));
-    xhr.onerror = () => reject(new Error('network error'));
+    xhr.onload = () => {
+      if (xhr.status < 300) return resolve(JSON.parse(xhr.responseText));
+      let msg = xhr.responseText; try { msg = JSON.parse(xhr.responseText).error.message; } catch {}
+      reject(Object.assign(new Error(`Cloudinary: ${msg}`), { retry: xhr.status >= 500 || xhr.status === 420 || xhr.status === 429 }));
+    };
+    xhr.onerror = () => reject(Object.assign(new Error('NETWORK'), { retry: true }));
     xhr.send(form);
   });
+  let res;
+  for (const delay of [0, 1500, 4000]) {
+    if (delay) { onProgress(0); await new Promise(r => setTimeout(r, delay)); }
+    try { res = await attempt(); break; }
+    catch (e) { if (!e.retry || delay === 4000) throw e; console.warn('upload retry after', e.message); }
+  }
 
   return {
     url: res.secure_url,

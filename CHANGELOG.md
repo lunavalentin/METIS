@@ -1,5 +1,31 @@
 # METIS change log
 
+## 2026-10-17 — v0.6.2 uploads verified on the live site; automatic retry
+
+**Cloudinary connected**: cloud `cwmp8wdp`, unsigned preset `metis_esaaa` (saved by Luna in ⚙ Settings → Firestore).
+
+**Tests on real services**
+- curl upload of each type through the preset: photo/360° (`image`), recording (`video`), IR (`raw`) all OK.
+  Delivery sends `Access-Control-Allow-Origin: *`; the IR and the recording come back **byte-identical** (md5);
+  the `c_limit,w_800` thumbnail transform works. A BMP was also accepted, so the preset's "Allowed formats" is not set yet
+  (the site refuses BMP on its own).
+- **End-to-end on the live site** (headless Chrome, student `basalte`): login, charter, new place on R3, upload of photo + 360° +
+  recording + IR linked to the 360° → "4 contenus"; Acoustique plays; analysis of the IR loaded from Cloudinary is
+  EDT 1.09 / T20 1.10 / T30 1.10 s (test IR built with RT = 1.1 s); the CAVERN view loads the 360° from Cloudinary and plays;
+  gallery thumbnails load; the place was then deleted, and Firestore was checked to hold only Luna's "Imaginary Place".
+- Mishaps during testing, all from my test scripts, not the site:
+  - a wrong file path crashed a run halfway → its leftover place was deleted through the REST API;
+  - a run reused a logged-in browser profile → invalid, rerun with a fresh profile and stricter success checks;
+  - output was buffered by a `grep` pipe.
+
+**Change**: `upload.js` now retries network failures and Cloudinary 5xx/420/429 twice (after 1.5 s, then 4 s).
+Other Cloudinary errors show Cloudinary's own message, and the final network failure shows a clear message.
+Real network errors happened once during the live test. Verified by forcing the first request to fail (CDP `Fetch.failRequest`):
+the upload succeeded on the retry, after 2.3 s.
+
+**Leftovers**: about 9 small test files in Cloudinary under `metis/esaaa/` (the site cannot delete Cloudinary files);
+they can be removed in the Media Library.
+
 ## 2026-10-17 — v0.6.1 admins can upload heavier / longer files
 
 - When a file is over the size or duration limit, admins get an extra **"Envoyer tel quel (admin)"** button next to Compress / Convert.
