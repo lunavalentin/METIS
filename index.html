@@ -208,7 +208,9 @@
     .leaflet-control-attribution a { color: inherit; }
 
     .tiles-muted { filter: invert(1) hue-rotate(180deg) grayscale(.85) brightness(.8) contrast(.9); }
-    .overlay-lines { filter: invert(1) contrast(1.8) brightness(.95); mix-blend-mode: screen; }
+    /* Black-on-white drawings → glowing violet lines on the dark map: invert, push greys to black (transparent under
+       "screen"), then tint. sepia+hue-rotate gives a colour that survives screen blending. */
+    .overlay-lines { filter: invert(1) grayscale(1) contrast(3.2) brightness(1.15) sepia(1) hue-rotate(205deg) saturate(3.5); mix-blend-mode: screen; }
     .metis-recenter a { display: grid !important; place-items: center; }
     .align-panel { position: absolute; z-index: 900; top: 90px; left: var(--gutter); width: 260px; padding: .9rem; border-radius: var(--r);
       background: var(--surface-solid); border: 1px solid var(--line); box-shadow: var(--shadow-lg); font-size: .82rem; }

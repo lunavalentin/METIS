@@ -1,5 +1,23 @@
 # METIS change log
 
+## 2026-10-17 — v0.3.1 plan visibility, level focus
+
+- `blend: "lines"` overlays are now tinted violet with stronger contrast (invert → grayscale → contrast 3.2 → sepia/hue-rotate),
+  because the thin grey lines were nearly invisible on the dark map. Checked in headless Chrome on the dark and satellite bases.
+- Choosing a level that has a plan flies to it at zoom ≥ `config.map.levelZoom` (default 19).
+- `make_auth_import.mjs`: optional `uid`/`password` columns and `--words` (see the 2026-10-17 accounts change in ESAAA).
+- Login: Firebase error codes are shown for non-credential failures; no autocorrect or autocapitalize on the username.
+
+**ESAAA placement redone**: the first R3 placement (42°) was **wrong by ~180°**. It was based on matching the plan's curved
+element to a curved skylight. The silo 2014 plan labels that curve "ACCUEIL" (a desk) and the top of the plan "CÔTÉ SEMNOZ"
+(the uphill, south-west side). The new fit was done by an optimiser: a two-way chamfer distance between the plan's thick walls
+(dark pixels after a 3×3 opening) and the OSM outlines of ways 40958449 and 229390588, on Esri z19 imagery.
+A first one-way version shrank the plan to its scale limit (a known failure) and was discarded.
+Result: centre 45.893309, 6.134979; 194.5 × 126.4 m; rotation 228.5°. Visual check: the earth hatching lands on the
+forested slope, the walls follow both buildings, and the plan's tree symbols land on real trees. Likely within a few metres; not surveyed.
+**Dead end**: registering the silo "PLAN-USAGES" level-3 diagram onto the Vurpas plan failed (cost ~33–35 px). Its parts are at
+inconsistent scales (~2.4× vs ~1.4×), so it is a schematic, not a scaled plan; it was not added as a map layer.
+
 ## 2026-10-17 — v0.3 serif wordmark, recenter, plan overlays + alignment tool
 
 **Changes**

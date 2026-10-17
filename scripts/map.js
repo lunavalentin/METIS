@@ -151,10 +151,16 @@ export class MetisMap {
     return this.mode === 'plan' ? { x: latlng.lng, y: latlng.lat, floor: this.floor } : { lat: latlng.lat, lng: latlng.lng, floor: this.floor };
   }
 
-  setFloor(floorId) {
+  // focus: when the level has a plan, zoom in on it (config.map.levelZoom, default 19) so thin lines stay readable.
+  setFloor(floorId, { focus = false } = {}) {
     this.floor = floorId;
+    const shown = [];
     for (const ov of this.overlays) {
-      if (ov.metis.floor === floorId) ov.addTo(this.map); else ov.remove();
+      if (ov.metis.floor === floorId) { ov.addTo(this.map); shown.push(ov); } else ov.remove();
+    }
+    if (focus && shown.length && this.mode === 'geo') {
+      const z = Math.max(this.map.getZoom(), this.config.map.levelZoom ?? 19);
+      this.map.flyTo(shown[0].metis.placement.center, z, { duration: 0.6 });
     }
     this.renderMarkers();
   }

@@ -56,7 +56,7 @@ function renderHeader() {
   const current = state.map?.floor ?? c.floors[0]?.id;
   $('#floors').hidden = c.floors.length < 2;
   $('#floors').innerHTML = c.floors.map(f => `<button data-floor="${esc(f.id)}" class="${f.id === current ? 'on' : ''}">${esc(tr(f.label))}</button>`).join('');
-  $('#floors').querySelectorAll('[data-floor]').forEach(b => (b.onclick = () => { state.map.setFloor(b.dataset.floor); renderHeader(); }));
+  $('#floors').querySelectorAll('[data-floor]').forEach(b => (b.onclick = () => { state.map.setFloor(b.dataset.floor, { focus: true }); renderHeader(); }));
   $('#lang').textContent = getLang() === 'fr' ? 'EN' : 'FR';
   $('#lang').onclick = () => { setLang(getLang() === 'fr' ? 'en' : 'fr'); applyI18n(); renderHeader(); if (state.point) renderPanel(); };
   $('#add').hidden = !u || state.backend.readOnly;
