@@ -1,75 +1,87 @@
 rules_version = '2';
-// METIS Firestore rules. Roles come from custom claims set by tools/create_accounts.mjs.
-// Note: "hidden" is enforced in the UI only; a hidden item stays readable through the API.
+// METIS — one site, many projects.
+// Super-admins (Luna, Celeste): custom claim role "admin" — all projects, create projects and accounts.
+// Cleanup bot: custom claim role "service" — reads everything it needs, writes only cleanup reports.
+// Everyone else: users/{uid} = { project, role: student | instructor } — reads/writes only their own project.
+// A project is readable by anyone if public == true; writable by its members only while status == "active".
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function role() { return signedIn() ? request.auth.token.get('role', 'student') : null; }
-    function isAdmin() { return role() == 'admin'; }
-    function isStaff() { return role() in ['admin', 'instructor']; }
-    function projectPublic(pid) {
-      return get(/databases/$(database)/documents/projects/$(pid)).data.get('public', false) == true;
-    }
-    function canRead(pid) { return signedIn() || projectPublic(pid); }
+    function claim() { return signedIn() ? request.auth.token.get('role', '') : ''; }
+    function isSuper() { return claim() == 'admin'; }
+    function isService() { return claim() == 'service'; }
+    function myPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function member(pid) { return signedIn() && exists(myPath()) && get(myPath()).data.project == pid; }
+    function roleIn(pid) { return member(pid) ? get(myPath()).data.role : ''; }
+    function staff(pid) { return isSuper() || roleIn(pid) == 'instructor'; }
+    function proj(pid) { return get(/databases/$(database)/documents/projects/$(pid)).data; }
+    function isPublic(pid) { return proj(pid).get('public', false) == true; }
+    function isActive(pid) { return proj(pid).get('status', 'active') == 'active'; }
+    function canRead(pid) { return isSuper() || isService() || member(pid) || isPublic(pid); }
+    function canWrite(pid) { return isSuper() || (member(pid) && isActive(pid)); }
+    function onlyChanges(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
     // Text blocks are capped at 1 000 characters (the UI enforces the same limit).
     function textOk(d) { return !('meta' in d) || !('text' in d.meta) || d.meta.text.size() <= 1000; }
-    function onlyChanges(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
+
+    match /users/{uid} {
+      allow read: if isSuper() || (signedIn() && request.auth.uid == uid);
+      allow create, delete: if isSuper();
+      allow update: if isSuper() || (signedIn() && request.auth.uid == uid && onlyChanges(['displayName', 'charterAcceptedAt']));
+    }
+
+    // Site-wide admin settings (e.g. the GitHub token for "clean now").
+    match /global/{doc} {
+      allow read, write: if isSuper();
+    }
 
     match /projects/{pid} {
-      allow read: if canRead(pid);
-      allow write: if isAdmin();
+      // get: members see their own project; list (queries): only the conditions a query can prove — the public world map
+      // asks for public == true; super-admins and the bot list everything.
+      allow get: if isSuper() || isService() || member(pid) || resource.data.get('public', false) == true;
+      allow list: if isSuper() || isService() || resource.data.public == true;
+      allow write: if isSuper();
 
-      // Settings that must not be public (e.g. the Cloudinary upload preset): signed-in users read, admins write.
+      // Upload settings (cloud name, unsigned preset): members need them to upload.
       match /private/{doc} {
-        allow read: if signedIn();
-        allow write: if isAdmin();
+        allow read: if isSuper() || isService() || member(pid);
+        allow write: if isSuper();
       }
-
-      // Admin-only data: GitHub token for the "clean now" button (settings) and the last cleanup report (cleanup).
-      // The cleanup bot (role "service", password only in GitHub secrets) may write the report.
+      // Encrypted cloud API keys: written by super-admins, readable only by the cleanup bot.
+      match /secrets/{doc} {
+        allow read: if isService();
+        allow write: if isSuper();
+      }
+      // Generated account lists (with passwords) and cleanup reports.
       match /admin/{doc} {
-        allow read: if isAdmin();
-        allow write: if isAdmin() || (role() == 'service' && doc == 'cleanup');
-      }
-
-      match /layers/{lid} {
-        allow read: if canRead(pid);
-        allow write: if isStaff();
+        allow read: if isSuper();
+        allow write: if isSuper() || (isService() && doc == 'cleanup');
       }
 
       match /points/{ptid} {
         allow read: if canRead(pid);
-        allow create: if signedIn()
+        allow create: if canWrite(pid)
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.name is string && request.resource.data.name.size() <= 80;
-        // Anyone signed in may append to the media-type summary; the owner/staff may edit the rest.
-        // Per-place upload limits ("limits") can only be changed by admins.
-        allow update: if signedIn() && (onlyChanges(['types'])
-          || ((resource.data.createdBy == request.auth.uid || isStaff())
-              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['limits']) || isAdmin())));
-        allow delete: if isStaff() || (signedIn() && resource.data.createdBy == request.auth.uid);
+        // Anyone in the project may append to the media-type summary; owner/staff edit the rest; per-place limits: super-admins.
+        allow update: if canWrite(pid) && (onlyChanges(['types'])
+          || ((resource.data.createdBy == request.auth.uid || staff(pid))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['limits']) || isSuper())));
+        allow delete: if canWrite(pid) && (staff(pid) || resource.data.createdBy == request.auth.uid);
 
         match /items/{iid} {
           allow read: if canRead(pid);
-          allow create: if signedIn()
+          allow create: if canWrite(pid)
             && request.resource.data.author.uid == request.auth.uid
             && request.resource.data.hidden == false
             && request.resource.data.type in ['photo', 'video', 'pano', 'ir', 'audio', 'text']
             && textOk(request.resource.data);
-          allow update: if textOk(request.resource.data) && (isStaff()
-            || (signedIn() && resource.data.author.uid == request.auth.uid
+          allow update: if canWrite(pid) && textOk(request.resource.data) && (staff(pid)
+            || (resource.data.author.uid == request.auth.uid
                 && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hidden', 'hiddenBy', 'author'])));
-          allow delete: if isStaff() || (signedIn() && resource.data.author.uid == request.auth.uid);
+          allow delete: if canWrite(pid) && (staff(pid) || resource.data.author.uid == request.auth.uid);
         }
       }
-    }
-
-    match /users/{uid} {
-      allow read: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['displayName', 'role', 'charterAcceptedAt'])
-        && (!('role' in request.resource.data) || (resource != null && request.resource.data.role == resource.data.role));
     }
   }
 }
