@@ -214,5 +214,14 @@
   "procstep_deconv": "deconvolution",
   "procstep_align": "alignment",
   "procstep_trim": "tail trim",
-  "procstep_normalize": "normalisation"
+  "procstep_normalize": "normalisation",
+  "noPanoYet": "No 360° photo in this place yet: add one in Gallery, then link it here (Edit) or from the photo.",
+  "noIRYet": "No impulse response in this place yet: add one in Acoustics, then link it here (Edit) or from the IR.",
+  "fmtDetected4": "4 channels detected: first-order ambisonics.",
+  "fmtDetected2": "2 channels detected: stereo or binaural.",
+  "fmtDetected1": "1 channel detected: mono.",
+  "fmtDetectedN": "{n} channels detected: only the first will be used.",
+  "fmtChanged": "Format adjusted automatically.",
+  "fmtChanged4": "Format set to AmbiX — choose FuMa if your mic records in that order.",
+  "fmtChanged2": "Format set to stereo — choose binaural for a dummy head."
 }

@@ -1,5 +1,18 @@
 # METIS change log
 
+## 2026-10-17 — v0.9.3 ambisonic IRs: processing verified, format auto-detected, 360° link always visible
+
+- **Ambisonics compliance tested** (`tests/irprocess.test.mjs`, now 19/19): a 4-channel AmbiX IR with known channel gains
+  (W 1, Y 0.6, Z −0.3, X 0.75), (a) normalise + align + trim, (b) METIS-sweep deconvolution + all → 4 channels of equal length,
+  **ratios and signs kept to < 1e-3**, one common gain (loudest channel −1.00 dBFS). By design: same cut, same gain, same linear filter
+  on every channel; the 24-bit WAV keeps the channel order.
+- IR form: the format is preselected from the file's channel count (4 → AmbiX unless FuMa is already chosen; 2 → stereo unless
+  binaural is chosen; 1 → mono), with a note telling the user to check it. `checkFile` now reports `info.channels`.
+- "Photo 360° liée (CAVERN)" is always shown in the IR form. Without a 360° in the place it is disabled, with a hint; the reverse
+  ("Réponse impulsionnelle liée" in the 360° form) likewise. Before, it was hidden, which looked like a missing feature.
+- Browser test (mock): the hint is shown in a place without a 360°; a 4-ch file → AmbiX + note; the processed preview has 4 channels
+  and T30 1.21 s (synthetic IR built with RT 1.2 s); in a place with a 360°, the link offers it. No errors.
+
 ## 2026-10-17 — v0.9.2 convolution levels fixed (no more saturation); sweep no longer preselects a deconvolution
 
 - Choosing "sinus glissant (sweep)" no longer preselects the METIS-sweep deconvolution; the default stays "Aucune" (Luna's request).

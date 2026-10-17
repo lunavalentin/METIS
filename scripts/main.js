@@ -549,8 +549,10 @@ function showItemForm(type, existing = null) {
     irMethod: () => `<label>${t('f_irMethod')}${sel('irMethod', IR_METHODS.map(f => [f, t('method_' + f)]), ir.method || 'clap')}</label>`,
     irSource: () => metaField('irSource', ir.source, false),
     irReceiver: () => metaField('irReceiver', ir.receiver, false),
-    linkPano: () => (panos.length ? `<label>${t('f_linkPano')}${linkSel('linkedPano', panos, existing?.linkedPano)}</label>` : ''),
-    linkIR: () => (irs.length ? `<label>${t('f_linkIR')}${linkSel('linkedIR', irs, existing?.linkedIR)}</label>` : ''),
+    linkPano: () => (panos.length ? `<label>${t('f_linkPano')}${linkSel('linkedPano', panos, existing?.linkedPano)}</label>`
+      : `<label>${t('f_linkPano')}<select disabled><option>${t('none')}</option></select></label><p class="hint small">${t('noPanoYet')}</p>`),
+    linkIR: () => (irs.length ? `<label>${t('f_linkIR')}${linkSel('linkedIR', irs, existing?.linkedIR)}</label>`
+      : `<label>${t('f_linkIR')}<select disabled><option>${t('none')}</option></select></label><p class="hint small">${t('noIRYet')}</p>`),
     process: () => `<div class="ir-process">
       <p class="hint small">${t('proc_intro')}</p>
       <label class="check"><input type="checkbox" name="pNormalize" checked> ${t('proc_normalize')}</label>
@@ -692,6 +694,15 @@ function showItemForm(type, existing = null) {
     if (!file) return;
     box.hidden = false; box.innerHTML = `<p class="hint small">${t('checking')}</p>`;
     prepared = { file, check: await checkFile(ty, file, L) };
+    // IR: preselect the format from the channel count (4 → AmbiX, 2 → stereo, 1 → mono); FuMa / binaural stay a manual choice.
+    const nch = prepared.check.info?.channels, fmt = form.elements.irFormat;
+    if (ty === 'ir' && fmt && nch) {
+      const guess = nch === 4 ? (fmt.value.startsWith('foa') ? fmt.value : 'foa-ambix') : nch === 2 ? (['stereo', 'binaural'].includes(fmt.value) ? fmt.value : 'stereo') : nch === 1 ? 'mono' : fmt.value;
+      const changed = guess !== fmt.value; fmt.value = guess;
+      let note = form.querySelector('.fmt-note');
+      if (!note) { note = Object.assign(document.createElement('p'), { className: 'hint small fmt-note' }); fmt.closest('label').after(note); }
+      note.textContent = t(nch === 4 ? 'fmtDetected4' : nch === 2 ? 'fmtDetected2' : nch === 1 ? 'fmtDetected1' : 'fmtDetectedN').replace('{n}', nch) + (changed ? ' ' + t(nch === 4 ? 'fmtChanged4' : nch === 2 ? 'fmtChanged2' : 'fmtChanged') : '');
+    }
     showCheck();
   });
 }

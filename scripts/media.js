@@ -136,7 +136,7 @@ export async function checkFile(type, file, limits = DEFAULT_LIMITS) {
     if (long) problems.push('lim_soundLong');
     if (big) problems.push('lim_soundBig');
     if (aiff) problems.push('lim_aiff');
-    if (!problems.length) return { ok: true, problems, fixes: [], info: { dur } };
+    if (!problems.length) return { ok: true, problems, fixes: [], info: { dur, channels: snd.channels.length } };
     // One combined fix: trim if too long, then encode (IR: lossless 16-bit WAV keeps every channel; recordings: MP3).
     const run = async () => {
       const s = long ? trim(snd, L.maxSoundSec - 0.25) : snd;
@@ -145,7 +145,7 @@ export async function checkFile(type, file, limits = DEFAULT_LIMITS) {
       return mp3 ? new File([mp3], rename(file.name, 'mp3'), { type: 'audio/mpeg' }) : new File([encodeWav(s, 16)], rename(file.name, 'wav'), { type: 'audio/wav' });
     };
     const key = long ? 'fix_trimConvert' : type === 'ir' || (aiff && !big) ? 'fix_toWav' : 'fix_toMp3';
-    return { ok: false, problems, info: { dur, size: file.size, max }, fixes: [{ key, run }] };
+    return { ok: false, problems, info: { dur, size: file.size, max, channels: snd.channels.length }, fixes: [{ key, run }] };
   }
   return { ok: true, problems: [], fixes: [] };
 }

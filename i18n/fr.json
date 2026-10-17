@@ -214,5 +214,14 @@
   "procstep_deconv": "déconvolution",
   "procstep_align": "alignement",
   "procstep_trim": "coupe de la fin",
-  "procstep_normalize": "normalisation"
+  "procstep_normalize": "normalisation",
+  "noPanoYet": "Aucune photo 360° dans ce lieu pour l'instant : ajoutez-en une dans Galerie, puis liez-la ici (Modifier) ou depuis la photo.",
+  "noIRYet": "Aucune réponse impulsionnelle dans ce lieu pour l'instant : ajoutez-en une dans Acoustique, puis liez-la ici (Modifier) ou depuis la RI.",
+  "fmtDetected4": "4 canaux détectés : ambisonique 1er ordre.",
+  "fmtDetected2": "2 canaux détectés : stéréo ou binaural.",
+  "fmtDetected1": "1 canal détecté : mono.",
+  "fmtDetectedN": "{n} canaux détectés : seul le premier sera utilisé.",
+  "fmtChanged": "Format ajusté automatiquement.",
+  "fmtChanged4": "Format ajusté : AmbiX — choisissez FuMa si votre micro enregistre dans cet ordre.",
+  "fmtChanged2": "Format ajusté : stéréo — choisissez binaural pour une tête artificielle."
 }

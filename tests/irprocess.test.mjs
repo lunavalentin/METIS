@@ -55,3 +55,25 @@ ok('tail trim with a noise floor at −54 dB', tr.lengthS > 0.45 && tr.lengthS <
 const mc = processIR({ sampleRate: fs, channels: [h, Float32Array.from(h, v => 0.5 * v)] }, { align: true, normalize: true });
 ok('4ch/2ch: same cut on every channel', mc.snd.channels[0].length === mc.snd.channels[1].length);
 if (globalThis.failed) throw new Error('tests failed');
+
+// --- Ambisonics: a 4-channel (AmbiX W,Y,Z,X) IR must keep its channel count, its order and the ratios between channels ---
+{
+  const gains = [1, 0.6, -0.3, 0.75];                     // a source front-left and slightly below: Y>0, Z<0, X>0
+  const foaIR = gains.map(g => Float32Array.from(h, v => v * g));
+  const foaRec = gains.map(g => Float32Array.from(rec, v => v * g)); // same sweep recording, through the same IR, per channel
+  const rms = c => Math.sqrt(c.reduce((a, v) => a + v * v, 0) / c.length);
+  const ratios = chans => chans.map(c => Math.sign(c[c.reduce((bi, v, i, a) => (Math.abs(v) > Math.abs(a[bi]) ? i : bi), 0)]) * rms(c) / rms(chans[0]));
+  for (const [label, input, opts] of [
+    ['FOA IR: normalise + align + trim', { sampleRate: fs, channels: foaIR }, { normalize: true, align: true, trim: true }],
+    ['FOA sweep: deconvolve (METIS) + all', { sampleRate: fs, channels: foaRec }, { deconv: { kind: 'ess', params: METIS_SWEEP }, normalize: true, align: true, trim: true }],
+  ]) {
+    const { snd: out } = processIR(input, opts);
+    const r = ratios(out.channels), want = gains.map(g => g / gains[0]);
+    const err = Math.max(...r.map((v, i) => Math.abs(v - want[i])));
+    ok(`${label}: 4 channels, same length`, out.channels.length === 4 && out.channels.every(c => c.length === out.channels[0].length));
+    ok(`${label}: channel ratios kept (W,Y,Z,X)`, err < 1e-3, `(got ${r.map(v => v.toFixed(3)).join(', ')}; want ${want.map(v => v.toFixed(3)).join(', ')})`);
+    const pk = out.channels.reduce((m, c) => Math.max(m, c.reduce((a, v) => Math.max(a, Math.abs(v)), 0)), 0);
+    ok(`${label}: one common gain (loudest channel at −1 dBFS)`, Math.abs(20 * Math.log10(pk) + 1) < 0.01, `(${(20 * Math.log10(pk)).toFixed(2)} dBFS)`);
+  }
+}
+if (globalThis.failed) throw new Error('tests failed');
