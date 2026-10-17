@@ -54,6 +54,10 @@ for (const p of points) {
 // --- Cloudinary Admin API ---
 const CH = { Authorization: 'Basic ' + btoa(`${env.CLOUDINARY_API_KEY}:${env.CLOUDINARY_API_SECRET}`) };
 const CA = `https://api.cloudinary.com/v1_1/${cloud}`;
+// On a rejected key, describe its shape (never its value): Cloudinary API keys are ~15 digits, secrets ~27 characters.
+const shape = v => `${v.length} chars, ${/^\d+$/.test(v) ? 'digits only' : 'not only digits'}${/\s/.test(v) ? ', contains spaces/newlines' : ''}${v.includes('cloudinary://') ? ', looks like a CLOUDINARY_URL' : ''}`;
+const ck = await fetch(`${CA}/usage`, { headers: CH });
+if (ck.status === 401) throw new Error(`Cloudinary rejected the credentials for cloud "${cloud}": ${(await ck.text()).slice(0, 120)} — API key: ${shape(env.CLOUDINARY_API_KEY)}; API secret: ${shape(env.CLOUDINARY_API_SECRET)}`);
 const assets = [];
 for (const type of ['image', 'video', 'raw']) {
   let cursor = '';
