@@ -17,7 +17,8 @@ async function staticBackend() {
     watchPoints(cb) { cb(data.points); return () => {}; },
     watchItems(pointId, cb) { cb(data.items[pointId] || []); return () => {}; },
     login: readOnly, logout: readOnly, acceptCharter: readOnly,
-    addPoint: readOnly, addItem: readOnly, updateItem: readOnly, deleteItem: readOnly,
+    addPoint: readOnly, updatePoint: readOnly, deletePoint: readOnly,
+    addItem: readOnly, updateItem: readOnly, setHidden: readOnly, deleteItem: readOnly,
   };
 }
 
@@ -85,13 +86,26 @@ async function firebaseBackend(config) {
       return F.onSnapshot(q, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onError);
     },
 
-    async addPoint({ lat, lng, x, y, floor, name }) {
+    async addPoint({ lat, lng, x, y, floor, name, meta = {} }) {
       const ref = await F.addDoc(pointsCol, {
         ...(lat !== undefined ? { lat, lng } : { x, y }),
-        floor, name, types: [], hidden: false,
-        createdBy: current.uid, createdAt: F.serverTimestamp(),
+        floor, name, meta, types: [], hidden: false,
+        createdBy: current.uid, createdByName: current.displayName, createdAt: F.serverTimestamp(),
       });
       return ref.id;
+    },
+
+    // Rename, move, change level or edit the place's own metadata (owner or staff, see firestore.rules).
+    updatePoint(pointId, patch) {
+      return F.updateDoc(F.doc(pointsCol, pointId), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid });
+    },
+
+    // Firestore does not cascade: delete every item first, then the place. Media files stay on Cloudinary
+    // (an unsigned client cannot delete them); tools/freeze.mjs only copies what is still referenced.
+    async deletePoint(pointId) {
+      const snap = await F.getDocs(itemsCol(pointId));
+      await Promise.all(snap.docs.map(d => F.deleteDoc(d.ref)));
+      await F.deleteDoc(F.doc(pointsCol, pointId));
     },
 
     async addItem(pointId, item) {

@@ -1,6 +1,6 @@
 // Leaflet map: geo (OSM / satellite) or plan (local metres, CRS.Simple); floor plans as
 // georeferenced overlays placed by centre + size in metres + rotation; floor switcher; markers.
-import { tr } from './i18n.js';
+import { t, tr } from './i18n.js';
 
 const L = window.L;
 
@@ -29,7 +29,7 @@ const RecenterControl = L.Control.extend({
   options: { position: 'bottomright' },
   onAdd() {
     const el = L.DomUtil.create('div', 'leaflet-bar metis-recenter');
-    el.innerHTML = `<a href="#" role="button" title="Recentrer / Recenter" aria-label="Recenter">
+    el.innerHTML = `<a href="#" role="button" title="${t('recenter')}" aria-label="${t('recenter')}">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></a>`;
     L.DomEvent.disableClickPropagation(el);
@@ -41,7 +41,17 @@ const RecenterControl = L.Control.extend({
 // Tooltip strings are rendered as HTML by Leaflet; names come from users.
 const escapeHtml = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export const TYPE_COLORS = { pano: '#d9480f', ir: '#1971c2', audio: '#0ca678', photo: '#ae3ec9', video: '#e8590c', text: '#495057' };
+// One rainbow hue per media type (shared by pins, tabs, cards and chips).
+export const TYPE_COLORS = { photo: '#ff5ea8', video: '#ff8a3d', pano: '#ffd23f', ir: '#3ddc97', audio: '#36c5f0', text: '#9b7bff' };
+const TYPE_ORDER = ['photo', 'video', 'pano', 'ir', 'audio', 'text'];
+
+// Pin = ring split into one coloured segment per media type the place holds; empty places get a faint rainbow ring.
+function pinStyle(types) {
+  const ts = TYPE_ORDER.filter(x => types.includes(x));
+  if (!ts.length) return '';
+  const step = 360 / ts.length;
+  return `--ring: conic-gradient(${ts.map((x, i) => `${TYPE_COLORS[x]} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
+}
 
 export class MetisMap {
   constructor(el, config, { onPointClick, onMapClick }) {
@@ -66,7 +76,7 @@ export class MetisMap {
         maxNativeZoom: 19, maxZoom: 22, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
       });
       this.baseLayers = { Plan: muted, OSM: osm, Satellite: sat };
-      this.layerControl = L.control.layers(this.baseLayers, {}, { collapsed: true }).addTo(this.map);
+      this.layerControl = L.control.layers({ [t('basePlan')]: muted, OSM: osm, [t('baseSatellite')]: sat }, {}, { collapsed: true }).addTo(this.map);
     }
 
     for (const ly of config.layers) {
@@ -82,13 +92,27 @@ export class MetisMap {
       this.layerControl?.addOverlay(ov, tr(ly.label));
     }
 
-    new RecenterControl({ onClick: () => this.recenter() }).addTo(this.map);
-    L.control.zoom({ position: 'bottomright' }).addTo(this.map);
+    this.recenterCtl = new RecenterControl({ onClick: () => this.recenter() }).addTo(this.map);
+    this.zoomCtl = L.control.zoom({ position: 'bottomright', zoomInTitle: t('zoomIn'), zoomOutTitle: t('zoomOut') }).addTo(this.map);
     this.layerControl?.setPosition('bottomright');
     this.markers.addTo(this.map);
     this.onPointClick = onPointClick;
     this.map.on('click', e => onMapClick?.(this.toPointCoords(e.latlng)));
     this.setFloor(this.floor);
+  }
+
+  // Re-create the controls whose labels come from i18n (called after a language switch).
+  relabel() {
+    if (this.layerControl) {
+      this.layerControl.remove();
+      this.layerControl = L.control.layers({ [t('basePlan')]: this.baseLayers.Plan, OSM: this.baseLayers.OSM, [t('baseSatellite')]: this.baseLayers.Satellite }, {}, { collapsed: true, position: 'bottomright' });
+      for (const ov of this.overlays) this.layerControl.addOverlay(ov, tr(ov.metis.label));
+      this.layerControl.addTo(this.map);
+    }
+    this.recenterCtl.remove(); this.zoomCtl.remove();
+    this.recenterCtl = new RecenterControl({ onClick: () => this.recenter() }).addTo(this.map);
+    this.zoomCtl = L.control.zoom({ position: 'bottomright', zoomInTitle: t('zoomIn'), zoomOutTitle: t('zoomOut') }).addTo(this.map);
+    this.renderMarkers();
   }
 
   recenter() {
@@ -119,12 +143,12 @@ export class MetisMap {
     const panel = L.DomUtil.create('div', 'align-panel', this.map.getContainer());
     L.DomEvent.disableClickPropagation(panel); L.DomEvent.disableScrollPropagation(panel);
     panel.innerHTML = `
-      <strong>Align · ${escapeHtml(layerId)}</strong>
-      <label>Rotation <output data-o="rot"></output>°<input type="range" data-k="rot" min="-180" max="180" step="0.25"></label>
-      <label>Width <output data-o="w"></output> m<input type="range" data-k="w" min="10" max="500" step="0.25"></label>
-      <label>Opacity<input type="range" data-k="op" min="0.1" max="1" step="0.05"></label>
+      <strong>${t('alignTitle')} · ${escapeHtml(layerId)}</strong>
+      <label>${t('alignRotation')} <output data-o="rot"></output>°<input type="range" data-k="rot" min="-180" max="180" step="0.25"></label>
+      <label>${t('alignWidth')} <output data-o="w"></output> m<input type="range" data-k="w" min="10" max="500" step="0.25"></label>
+      <label>${t('alignOpacity')}<input type="range" data-k="op" min="0.1" max="1" step="0.05"></label>
       <textarea readonly rows="4"></textarea>
-      <button type="button">Copy JSON</button>`;
+      <button type="button">${t('alignCopy')}</button>`;
     const q = sel => panel.querySelector(sel);
     q('[data-k=rot]').value = p.rotationDeg; q('[data-k=w]').value = p.widthM; q('[data-k=op]').value = ov.options.opacity;
     const r4 = v => Math.round(v * 1e6) / 1e6;
@@ -173,10 +197,9 @@ export class MetisMap {
       if (p.hidden || (p.floor ?? null) !== this.floor) continue;
       const ll = this.mode === 'plan' ? [p.y, p.x] : [p.lat, p.lng];
       const types = p.types || [];
-      const color = TYPE_COLORS[types.find(t => TYPE_COLORS[t])] || '#868e96';
       const icon = L.divIcon({
         className: 'metis-pin',
-        html: `<span style="--c:${color}"${types.length ? '' : ' class="pin-empty"'}>${types.length || ''}</span>`,
+        html: `<span style="${pinStyle(types)}"${types.length ? '' : ' class="pin-empty"'}><b></b></span>`,
         iconSize: [30, 30], iconAnchor: [15, 15],
       });
       L.marker(ll, { icon, riseOnHover: true })

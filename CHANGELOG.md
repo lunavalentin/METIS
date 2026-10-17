@@ -1,5 +1,41 @@
 # METIS change log
 
+## 2026-10-17 — v0.4 place panel rework, admin editing, rainbow highlights, CAVIAR
+
+Asked by Luna: admins can remove or correct anything; colourful dots and rainbow highlights; everything FR/EN; new tab
+order with Acoustics and CAVIAR; per-file metadata; logout needs confirmation.
+
+**Changes**
+- Place panel tabs, in order: **Infos** (place metadata, level, creator, contributors, coloured counts per type) ·
+  **Galerie** (photos, videos, 360° photos; 360° opens full screen) · **Sons** (recordings + IR files) · **Textes** · **Acoustique**.
+- **Acoustique** (new `scripts/acoustics.js`): choose an IR, then a source: provided samples, recordings from this place,
+  the visitor's own audio file (decoded locally, never uploaded) or the live mic. Loop and volume; EDC + EDT/T20/T30/C50/C80/D50.
+  A playing sound is no longer cut when someone else uploads to the same place.
+- **CAVIAR**: a 360° photo ↔ IR link, set from either side in the upload/edit form ("Photo 360° liée" on an IR,
+  "Réponse impulsionnelle liée" on a 360°). Linked pairs open a full-screen 360° view where the binaural rendering follows the gaze.
+  Assumption: "CAVIAR" = an immersive mode inside METIS (Codes/CAVIAR is CCRMA's Max system, not a web app to link to).
+- **Editing**: admins and the place's creator can rename a place, change its level, edit its metadata, move it on the map,
+  or delete it (with all its items, after confirmation). Admins and authors can edit any file's metadata, links, or replace the file.
+  Instructors keep hide/unhide and delete for moderation. Places now have their own metadata (`point.meta`, `createdByName`).
+- Styled confirmation dialogs (`#confirm`) for logout, deleting a place and deleting a file (replacing `window.confirm`).
+- Rainbow accents on the dark theme:
+  - one hue per media type (photo pink, video orange, 360° yellow, IR green, audio cyan, text violet);
+  - pins are rings split by the media types a place holds;
+  - wordmark, add button, active tab and the CAVIAR buttons use the rainbow; cards have a coloured edge.
+- i18n audit: 54 missing keys added (116 in each language). This includes the map controls (zoom, recenter, base layers),
+  which now relabel on a language switch, and the alignment tool.
+- Placeholder dry samples `assets/samples/{clap,pluck,sweep}.wav` (synthesised: noise-burst claps, Karplus–Strong phrase,
+  100 Hz–8 kHz ESS). The configs pointed at sample files that did not exist.
+
+**Tests** (headless Chrome via CDP, mock in-memory backend logged in as admin, synthetic photo/360°/IR/recording; harness in the scratchpad, not in the repo):
+- all 5 tabs render; the Acoustique player starts; the CAVIAR viewer opens and plays; renaming a place and retitling an item work;
+- logout: cancel keeps the session, confirm logs out; deleting a place removes it and closes the panel;
+- English mode: no French words found in the header, levels, panel or map controls (21-word check list);
+- IR analysis on the synthetic IR (built with RT = 1.1 s): EDT 1.09 s, T20 1.10 s, T30 1.10 s;
+- no exceptions, console errors or HTTP errors. `deno lint` is clean.
+**Not tested**: the real Firebase writes of the new fields (rules unchanged and expected to allow them: owner/staff for
+points and items); audio on iOS Safari; the live mic in a real browser (headless used a fake device); uploads (Cloudinary not set up).
+
 ## 2026-10-17 — v0.3.1 plan visibility, level focus
 
 - `blend: "lines"` overlays are now tinted violet with stronger contrast (invert → grayscale → contrast 3.2 → sepia/hue-rotate),

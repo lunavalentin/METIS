@@ -82,13 +82,15 @@ projects/{pid}/layers/{lid}                # v0.2 — in v0.1 layers live in con
   bounds [[y0,x0],[y1,x1]]                                       # plan mode
 
 projects/{pid}/points/{ptid}
-  lat, lng (geo) | x, y (plan), floor, name, createdBy, createdAt, hidden
+  lat, lng (geo) | x, y (plan), floor, name, meta {description, users, intendedUse, unintendedUses, poetic, conditions, tags},
+  types[], createdBy, createdByName, createdAt, updatedAt, updatedBy, hidden
 
 projects/{pid}/points/{ptid}/items/{iid}
   type: photo|video|pano|ir|audio|text
   media {url, publicId, resourceType, thumbUrl, bytes, width, height, duration} | videoLink
   meta  {…see §5}
   irInfo {format, channels, sampleRate, order, norm, source, receiver, method, rotationDeg}
+  linkedPano (on an IR) | linkedIR (on a 360°)   # CAVIAR pair, settable from either side
   author {uid, displayName}, createdAt, hidden, hiddenBy
 
 users/{uid}

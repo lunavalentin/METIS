@@ -81,17 +81,24 @@
     "samples": [
       {
         "label": {
-          "fr": "Voix",
-          "en": "Voice"
+          "fr": "Claquements de mains (synthèse)",
+          "en": "Hand claps (synthetic)"
         },
-        "url": "assets/samples/voice.wav"
+        "url": "assets/samples/clap.wav"
       },
       {
         "label": {
-          "fr": "Claquement",
-          "en": "Clap"
+          "fr": "Corde pincée (synthèse)",
+          "en": "Plucked string (synthetic)"
         },
-        "url": "assets/samples/clap.wav"
+        "url": "assets/samples/pluck.wav"
+      },
+      {
+        "label": {
+          "fr": "Balayage sinusoïdal 100 Hz–8 kHz",
+          "en": "Sine sweep 100 Hz–8 kHz"
+        },
+        "url": "assets/samples/sweep.wav"
       }
     ]
   },
