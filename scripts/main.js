@@ -50,6 +50,7 @@ async function boot() {
 
   state.backend.onUser(async user => {
     state.user = user;
+    state.config.uploadSettings = user ? (await state.backend.getSettings().catch(() => ({}))).cloudinary || {} : {};
     renderHeader();
     if (state.point) renderPanel();
     if (user && !user.charterAcceptedAt) await showCharter();
@@ -98,6 +99,9 @@ function renderHeader() {
   $('#auth').innerHTML = u ? `<span class="initials">${esc(u.displayName.slice(0, 2).toUpperCase())}</span>` : esc(t('login'));
   $('#auth').title = u ? `${u.displayName} · ${t('logout')}` : '';
   $('#auth').onclick = () => (u ? confirmLogout() : showLogin());
+  $('#settings').hidden = !isAdmin(u) || state.backend.readOnly;
+  $('#settings').title = t('settings'); $('#settings').setAttribute('aria-label', t('settings'));
+  $('#settings').onclick = showSettings;
   applyI18n();
 }
 
@@ -121,7 +125,7 @@ function dialog(html, onSubmit, { el = '#dialog' } = {}) {
     e.preventDefault();
     const btn = form.querySelector('menu button:last-child'); if (btn) btn.disabled = true;
     try { if ((await onSubmit(new FormData(form), form)) !== false) d.close(); }
-    catch (err) { console.error(err); form.querySelector('.err').textContent = err.message; }
+    catch (err) { console.error(err); form.querySelector('.err').textContent = ({ UPLOAD_NOT_CONFIGURED: t('uploadNotConfigured'), IMAGE_DECODE: t('imageDecode') })[err.message] || err.message; }
     finally { if (btn) btn.disabled = false; }
   });
   d.showModal();
@@ -139,6 +143,33 @@ function confirmDialog(message, okLabel, { danger = false } = {}) {
     d.showModal();
     d.querySelector('[value=no]').focus();
   });
+}
+
+// Admin settings: file storage (Cloudinary, kept in Firestore so it is not public) and class-only / public switch.
+async function showSettings() {
+  const [settings, project] = await Promise.all([state.backend.getSettings(), state.backend.getProject()]);
+  const c = settings.cloudinary || {};
+  dialog(`
+    <h2>${t('settings')}</h2>
+    <h3 class="section-title">${t('storageTitle')}</h3>
+    <p class="hint small">${t('storageHint')}</p>
+    <label>${t('cloudName')}<input name="cloudName" value="${esc(c.cloudName || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. dxyz12345"></label>
+    <label>${t('uploadPreset')}<input name="uploadPreset" value="${esc(c.uploadPreset || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. metis_esaaa"></label>
+    <h3 class="section-title">${t('visibilityTitle')}</h3>
+    <label class="check"><input type="checkbox" name="public" ${project?.public ? 'checked' : ''}> ${t('projectPublic')}</label>
+    <p class="hint small">${t('projectPublicHint')}</p>
+    <p class="err"></p>
+    <menu><button type="button" data-cancel>${t('cancel')}</button><button>${t('save')}</button></menu>`,
+    async fd => {
+      const cloudinary = { cloudName: String(fd.get('cloudName')).trim(), uploadPreset: String(fd.get('uploadPreset')).trim() };
+      await state.backend.saveSettings({ cloudinary });
+      const pub = fd.get('public') === 'on';
+      if (!!project?.public !== pub) {
+        if (pub && !(await confirmDialog(t('confirmPublic'), t('projectPublic')))) return false;
+        await state.backend.setPublic(pub);
+      }
+      state.config.uploadSettings = cloudinary;
+    });
 }
 
 async function confirmLogout() {

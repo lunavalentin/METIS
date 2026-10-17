@@ -114,5 +114,16 @@
   "alignCopy": "Copier le JSON",
   "openCavern": "Écouter dans l'espace · CAVERN",
   "cavernHint": "tournez la vue, le son suit votre regard",
-  "cavernAvailable": "Cette réponse impulsionnelle est liée à une photo 360° : ouvrez-la pour une écoute immersive."
+  "cavernAvailable": "Cette réponse impulsionnelle est liée à une photo 360° : ouvrez-la pour une écoute immersive.",
+  "settings": "Réglages",
+  "storageTitle": "Stockage des fichiers (Cloudinary)",
+  "storageHint": "Ces informations restent dans Firebase, lisibles seulement par les comptes connectés : jamais dans le dépôt GitHub public.",
+  "cloudName": "Nom du cloud (Cloud name)",
+  "uploadPreset": "Préréglage d'envoi non signé (Upload preset)",
+  "visibilityTitle": "Visibilité",
+  "projectPublic": "Projet public",
+  "projectPublicHint": "Décoché : seul·es les participant·es connecté·es voient le site (pendant l'atelier). Coché : tout le monde peut le consulter.",
+  "confirmPublic": "Rendre le projet visible par tout le monde ?",
+  "uploadNotConfigured": "Le stockage des fichiers n'est pas encore configuré (Réglages, réservé aux admins).",
+  "imageDecode": "Image illisible par ce navigateur (format HEIC ?). Exportez-la en JPEG ou envoyez-la depuis le téléphone."
 }

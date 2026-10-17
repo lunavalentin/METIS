@@ -14,6 +14,7 @@ async function staticBackend() {
     readOnly: true,
     onUser: cb => cb(null),
     async getProject() { return data.project; },
+    getSettings: async () => ({}), saveSettings: readOnly, setPublic: readOnly,
     watchPoints(cb) { cb(data.points); return () => {}; },
     watchItems(pointId, cb) { cb(data.items[pointId] || []); return () => {}; },
     login: readOnly, logout: readOnly, acceptCharter: readOnly,
@@ -75,6 +76,19 @@ async function firebaseBackend(config) {
         if (e.code === 'permission-denied') return null;
         throw e;
       }
+    },
+
+    // projects/<id>/private/settings — e.g. { cloudinary: { cloudName, uploadPreset } }. Signed-in users only.
+    async getSettings() {
+      const s = await F.getDoc(F.doc(db, 'projects', pid, 'private', 'settings'));
+      return s.exists() ? s.data() : {};
+    },
+    saveSettings(patch) {
+      return F.setDoc(F.doc(db, 'projects', pid, 'private', 'settings'), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid }, { merge: true });
+    },
+    // Class-only (false) vs public (true) viewing of the whole project. Admins only (rules).
+    setPublic(isPublic) {
+      return F.setDoc(F.doc(db, 'projects', pid), { public: !!isPublic }, { merge: true });
     },
 
     watchPoints(cb, onError) {

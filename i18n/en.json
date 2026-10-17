@@ -114,5 +114,16 @@
   "alignCopy": "Copy JSON",
   "openCavern": "Listen in the space · CAVERN",
   "cavernHint": "turn the view, the sound follows your gaze",
-  "cavernAvailable": "This impulse response is linked to a 360° photo: open it for immersive listening."
+  "cavernAvailable": "This impulse response is linked to a 360° photo: open it for immersive listening.",
+  "settings": "Settings",
+  "storageTitle": "File storage (Cloudinary)",
+  "storageHint": "These stay in Firebase, readable only by logged-in accounts: never in the public GitHub repository.",
+  "cloudName": "Cloud name",
+  "uploadPreset": "Unsigned upload preset",
+  "visibilityTitle": "Visibility",
+  "projectPublic": "Public project",
+  "projectPublicHint": "Unchecked: only logged-in participants can see the site (during the workshop). Checked: anyone can browse it.",
+  "confirmPublic": "Make the project visible to everyone?",
+  "uploadNotConfigured": "File storage is not set up yet (Settings, admins only).",
+  "imageDecode": "This browser cannot read the image (HEIC?). Export it as JPEG or upload it from the phone."
 }

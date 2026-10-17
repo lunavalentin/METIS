@@ -18,16 +18,24 @@ export async function resizeImage(file, maxW, maxH = maxW) {
 
 // Prepares the file for its type (resizing images), then uploads. onProgress(0..1).
 export async function uploadMedia(config, type, file, onProgress = () => {}) {
+  // cloudName/uploadPreset come from the admin settings in Firestore (not the public config.json); folder from config.
+  const { cloudName, uploadPreset } = { ...config.cloudinary, ...config.uploadSettings };
+  const { folder } = config.cloudinary;
+  if (!cloudName || !uploadPreset || cloudName === 'TODO') throw new Error('UPLOAD_NOT_CONFIGURED');
   const u = config.upload;
   let blob = file;
-  if (type === 'photo') blob = await resizeImage(file, u.photoMaxPx);
-  if (type === 'pano') blob = await resizeImage(file, u.panoMaxW, u.panoMaxW / 2); // ≤ 5760×2880 fits iOS canvas limit
+  try {
+    if (type === 'photo') blob = await resizeImage(file, u.photoMaxPx);
+    if (type === 'pano') blob = await resizeImage(file, u.panoMaxW, u.panoMaxW / 2); // ≤ 5760×2880 fits iOS canvas limit
+  } catch (e) {
+    console.warn('image decode', e);
+    throw new Error('IMAGE_DECODE'); // e.g. HEIC in a browser that cannot read it
+  }
   if (type === 'video' && file.size > u.maxVideoMB * 1e6) {
     throw new Error(`video > ${u.maxVideoMB} MB: use a YouTube/Vimeo link`);
   }
 
   const resourceType = RESOURCE_TYPE[type];
-  const { cloudName, uploadPreset, folder } = config.cloudinary;
   const form = new FormData();
   form.append('file', blob, file.name);
   form.append('upload_preset', uploadPreset);

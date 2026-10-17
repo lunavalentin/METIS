@@ -1,5 +1,18 @@
 # METIS change log
 
+## 2026-10-17 — v0.5 admin settings: file storage + visibility
+
+- **Settings dialog** (gear icon, admins only):
+  - Cloudinary cloud name + unsigned upload preset, stored in Firestore `projects/<id>/private/settings`
+    (signed-in users can read it, admins write it; new rule). It is no longer in the public `config.json`, because Cloudinary
+    advises treating the preset name as sensitive. `config.cloudinary` now only keeps `folder`.
+  - "Projet public" switch, writing `projects/<id>.public`, with a confirmation before going public.
+- Upload errors: the storage configuration is checked before any image processing (`UPLOAD_NOT_CONFIGURED`), and an unreadable
+  image (e.g. HEIC in Chrome) gives a clear message (`IMAGE_DECODE`).
+- Tests (mock backend, headless Chrome): the gear is shown for admins; an upload without settings shows the
+  "not configured" message; saving stores the settings; going public asks for confirmation; no errors.
+  Not tested: a real upload (waiting for Luna's Cloudinary account).
+
 ## 2026-10-17 — v0.4.2 CAVIAR → CAVERN (naming correction)
 
 Luna meant **CAVERN** (her CAVERN template: 360° photo + IR convolution), not CAVIAR. The behaviour is unchanged.

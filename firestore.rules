@@ -18,6 +18,12 @@ service cloud.firestore {
       allow read: if canRead(pid);
       allow write: if isAdmin();
 
+      // Settings that must not be public (e.g. the Cloudinary upload preset): signed-in users read, admins write.
+      match /private/{doc} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+      }
+
       match /layers/{lid} {
         allow read: if canRead(pid);
         allow write: if isStaff();

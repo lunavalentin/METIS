@@ -23,8 +23,6 @@
     "emailDomain": "template.metis"
   },
   "cloudinary": {
-    "cloudName": "TODO",
-    "uploadPreset": "TODO",
     "folder": "metis/template"
   },
   "map": {
