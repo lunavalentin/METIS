@@ -19,9 +19,9 @@ const toDate = v => (v?.toDate ? v.toDate() : v ? new Date(v) : null);
 const fmtDate = v => { const d = toDate(v); return d && !isNaN(d) ? d.toLocaleString(getLang(), { dateStyle: 'medium', timeStyle: 'short' }) : ''; };
 
 // Tabs: which item types each one lists. Acoustics is a tool over the IRs, not a list.
-const TABS = { info: [], gallery: ['photo', 'video', 'pano'], sounds: ['audio', 'ir'], texts: ['text'], acoustics: ['ir'] };
-// Add buttons per tab (Infos and Acoustique have none; Acoustique offers "+ IR" in its empty state).
-const TAB_ADD = { gallery: ['photo', 'pano', 'video'], sounds: ['audio', 'ir'], texts: ['text'] };
+const TABS = { info: [], gallery: ['photo', 'video', 'pano'], sounds: ['audio'], texts: ['text'], acoustics: ['ir'] };
+// Add buttons per tab (none on Infos). Impulse responses are added from Acoustique only.
+const TAB_ADD = { gallery: ['photo', 'pano', 'video'], sounds: ['audio'], texts: ['text'], acoustics: ['ir'] };
 const TAB_KEYS = { info: 'tabInfo', gallery: 'tabGallery', sounds: 'tabSounds', texts: 'tabTexts', acoustics: 'tabAcoustics' };
 // Accepted uploads (see media.js for size/duration limits). Videos are links only (no file storage).
 const SOUND_ACCEPT = '.mp3,.wav,.aif,.aiff,audio/mpeg,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff';
@@ -38,8 +38,6 @@ const IR_FORMATS = ['mono', 'stereo', 'binaural', 'foa-ambix', 'foa-fuma'];
 const IR_METHODS = ['clap', 'balloon', 'sweep', 'other'];
 const META_TEXT = ['description', 'users', 'intendedUse', 'unintendedUses', 'poetic', 'conditions'];
 const PLACE_META = [...META_TEXT];
-// Questions about the place itself; not asked again for each image (they live in the place's Infos tab).
-const PLACE_QUESTIONS = ['users', 'intendedUse', 'unintendedUses'];
 
 const state = {
   config: null, backend: null, map: null, user: null, adding: false, moving: null,
@@ -312,7 +310,7 @@ function editPlace() {
     ${PLACE_META.map(k => metaField(k, m[k])).join('')}
     ${metaField('tags', (m.tags || []).join(', '), false)}
     ${isAdmin(state.user) ? `<h3 class="section-title">${t('lim_placeLimits')}</h3>
-    <div class="limits-row">${['images', 'sounds', 'texts'].map(g => `<label>${t('lim_' + g)}<input type="number" min="0" max="50" name="lim_${g}" value="${limitsFor(p).perPlace[g]}"></label>`).join('')}</div>` : ''}
+    <div class="limits-row">${['images', 'sounds', 'irs', 'texts'].map(g => `<label>${t('lim_' + g)}<input type="number" min="0" max="50" name="lim_${g}" value="${limitsFor(p).perPlace[g]}"></label>`).join('')}</div>` : ''}
     <div class="row-actions">
       <button type="button" data-move>${t('movePlace')}</button>
       <button type="button" data-delete class="danger">${t('deletePlace')}</button>
@@ -323,7 +321,7 @@ function editPlace() {
       const meta = { ...m, tags: readTags(fd) };
       for (const k of PLACE_META) meta[k] = fd.get(k) || '';
       const patch = { name: fd.get('name').trim(), floor: fd.get('floor'), meta };
-      if (isAdmin(state.user)) patch.limits = Object.fromEntries(['images', 'sounds', 'texts'].map(g => [g, Math.max(0, Number(fd.get('lim_' + g)) || 0)]));
+      if (isAdmin(state.user)) patch.limits = Object.fromEntries(['images', 'sounds', 'irs', 'texts'].map(g => [g, Math.max(0, Number(fd.get('lim_' + g)) || 0)]));
       await state.backend.updatePoint(p.id, patch);
     });
   form.querySelector('[data-move]').onclick = () => {
@@ -413,7 +411,7 @@ function renderPanel() {
 
   $('#panel .close').onclick = closePoint;
   wireTabs();
-  $('#panel').querySelectorAll('[data-add]').forEach(b => (b.onclick = () => showItemForm(b.dataset.add, null, { lockType: true })));
+  $('#panel').querySelectorAll('[data-add]').forEach(b => (b.onclick = () => showItemForm(b.dataset.add)));
   $('#panel [data-edit-place]')?.addEventListener('click', editPlace);
   $('#panel').querySelectorAll('[data-act]').forEach(b => (b.onclick = () => itemAction(b.dataset.act, b.dataset.id)));
   if (state.tab === 'acoustics') renderAcoustics($('#panel .acoustics'), items);
@@ -507,76 +505,107 @@ async function itemAction(act, id) {
 }
 
 // ---------- add / edit item ----------
-function showItemForm(type, existing = null, { lockType = false } = {}) {
-  const editing = !!existing;
-  const locked = editing || lockType;
+// Fields shown for each type, in order ("adv:" = inside "Options avancées"). Place questions live in the Infos tab only.
+const FORM_FIELDS = {
+  photo: ['file', 'title', 'capturedAt', 'description', 'poetic', 'credit', 'tags'],
+  pano: ['file', 'title', 'capturedAt', 'description', 'poetic', 'linkIR', 'credit', 'tags', 'adv:rotation'],
+  video: ['videoLink', 'title', 'capturedAt', 'description', 'credit', 'tags'],
+  audio: ['file', 'title', 'capturedAt', 'description', 'poetic', 'conditions', 'device', 'credit', 'tags'],
+  ir: ['file', 'title', 'capturedAt', 'irFormat', 'irMethod', 'irRaw', 'irSource', 'irReceiver', 'linkPano', 'description', 'tags', 'adv:rotation'],
+  text: ['title', 'text', 'credit', 'tags'],
+};
+const META_KEYS = ['title', 'description', 'poetic', 'conditions', 'device', 'credit', 'text'];
+
+function showItemForm(type, existing = null) {
+  const editing = !!existing, ty = editing ? existing.type : type;
   const m = existing?.meta || {}, ir = existing?.irInfo || {};
   const items = visibleItems();
   const panos = items.filter(x => x.type === 'pano'), irs = items.filter(x => x.type === 'ir');
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   const local = v => { const d = toDate(v); return d ? new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : now; };
   const L = limitsFor(state.point);
-  const isFull = k => !editing && GROUP[k] && groupCount(GROUP[k]) >= L.perPlace[GROUP[k]];
-  if (!editing && ITEM_TYPES.every(isFull)) { confirmDialog(t('lim_allFull'), t('close')); return; }
-  if (isFull(type)) type = ITEM_TYPES.find(k => !isFull(k));
-  const opts = ITEM_TYPES.map(k => `<option value="${k}" ${k === type ? 'selected' : ''} ${isFull(k) ? 'disabled' : ''}>${t('type_' + k)}${isFull(k) ? ` (${t('lim_full')})` : ''}</option>`).join('');
+  if (!editing && GROUP[ty] && groupCount(GROUP[ty]) >= L.perPlace[GROUP[ty]]) { confirmDialog(t('lim_allFull'), t('close')); return; }
   let prepared = null; // { file, check } — the file that will be uploaded, after checks / fixes
   const sel = (name, list, cur) => `<select name="${name}">${list.map(([v, label]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
-  const linkOpts = (list, cur) => sel('', [['', t('none')], ...list.map(x => [x.id, x.meta?.title || `${t('type_' + x.type)} · ${x.author?.displayName}`])], cur);
+  const linkSel = (name, list, cur) => sel(name, [['', t('none')], ...list.map(x => [x.id, x.meta?.title || `${t('type_' + x.type)} · ${x.author?.displayName}`])], cur || '');
+  const rotValue = ty === 'ir' ? ir.rotationDeg : existing?.panoInfo?.northOffsetDeg;
+  const FIELD = {
+    file: () => `<label>${t(editing ? 'replaceFile' : 'file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file" accept="${ACCEPT[ty] || ''}"></label>
+      <p class="hint small limits-hint"></p><div class="filecheck" hidden></div>`,
+    videoLink: () => `<label>${t('videoLink')}<input name="videoLink" type="url" required value="${esc(existing?.videoLink || '')}" placeholder="https://youtu.be/…"></label>`,
+    title: () => metaField('title', m.title, false),
+    capturedAt: () => `<label>${t('f_capturedAt')}<input name="capturedAt" type="datetime-local" value="${local(m.capturedAt)}"></label>`,
+    text: () => `${metaField('text', m.text, true, L.textMax).replace('rows="2"', 'rows="6" required')}<p class="hint small chars"></p>`,
+    description: () => metaField('description', m.description),
+    poetic: () => metaField('poetic', m.poetic),
+    conditions: () => metaField('conditions', m.conditions),
+    device: () => metaField('device', m.device, false),
+    credit: () => metaField('credit', m.credit, false).replace(t('f_credit'), ty === 'text' ? t('f_creditText') : t('f_credit')),
+    tags: () => metaField('tags', (m.tags || []).join(', '), false),
+    irFormat: () => `<label>${t('f_irFormat')}${sel('irFormat', IR_FORMATS.map(f => [f, t('irfmt_' + f.replace('-', '_'))]), ir.format || 'mono')}</label>`,
+    irMethod: () => `<label>${t('f_irMethod')}${sel('irMethod', IR_METHODS.map(f => [f, t('method_' + f)]), ir.method || 'clap')}</label>`,
+    irRaw: () => `<label class="check raw-row"><input type="checkbox" name="irRaw" ${ir.raw ? 'checked' : ''}> ${t('rawClap')}</label>`,
+    irSource: () => metaField('irSource', ir.source, false),
+    irReceiver: () => metaField('irReceiver', ir.receiver, false),
+    linkPano: () => (panos.length ? `<label>${t('f_linkPano')}${linkSel('linkedPano', panos, existing?.linkedPano)}</label>` : ''),
+    linkIR: () => (irs.length ? `<label>${t('f_linkIR')}${linkSel('linkedIR', irs, existing?.linkedIR)}</label>` : ''),
+    rotation: () => `<label>${t(ty === 'ir' ? 'f_irRotation' : 'f_panoNorth')}<input name="rotationDeg" type="number" step="1" value="${esc(rotValue ?? 0)}"></label><p class="hint small">${t('rotationHint')}</p>`,
+  };
+  const fields = FORM_FIELDS[ty];
+  const main = fields.filter(f => !f.startsWith('adv:')).map(f => FIELD[f]()).join('');
+  const adv = fields.filter(f => f.startsWith('adv:')).map(f => FIELD[f.slice(4)]()).join('');
   const form = dialog(`
-    <h2>${editing ? t('editItem') : t('addItem')}</h2>
-    <label>${t('type')}<select name="type" ${locked ? 'disabled' : ''}>${opts}</select></label>
-    <div data-for="file"><label>${t('file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file"></label>
-      <p class="hint small limits-hint"></p><div class="filecheck" hidden></div></div>
-    <div data-for="video"><label>${t('videoLink')}<input name="videoLink" type="url" value="${esc(existing?.videoLink || '')}"></label></div>
-    <div data-for="text">${metaField('text', m.text, true, L.textMax)}<p class="hint small chars"></p></div>
-    <div data-for="ir">
-      <label>${t('f_irFormat')}${sel('irFormat', IR_FORMATS.map(f => [f, f]), ir.format)}</label>
-      <label>${t('f_irMethod')}${sel('irMethod', IR_METHODS.map(f => [f, t('method_' + f)]), ir.method)}</label>
-      <label class="check"><input type="checkbox" name="irRaw" ${ir.raw ? 'checked' : ''}> ${t('rawClap')}</label>
-      ${metaField('irSource', ir.source, false)}${metaField('irReceiver', ir.receiver, false)}
-      ${panos.length ? `<label>${t('f_linkPano')}${linkOpts(panos, existing?.linkedPano || '').replace('<select name=""', '<select name="linkedPano"')}</label>` : ''}
-    </div>
-    <div data-for="panoLink">${irs.length ? `<label>${t('f_linkIR')}${linkOpts(irs, existing?.linkedIR || '').replace('<select name=""', '<select name="linkedIR"')}</label>` : ''}</div>
-    <div data-for="rot"><label>${t('f_rotation')}<input name="rotationDeg" type="number" step="1" value="${esc(ir.rotationDeg ?? existing?.panoInfo?.northOffsetDeg ?? 0)}"></label></div>
-    <div data-for="device">${metaField('device', m.device, false)}</div>
-    ${metaField('title', m.title, false)}
-    <label>${t('f_capturedAt')}<input name="capturedAt" type="datetime-local" value="${local(m.capturedAt)}"></label>
-    ${META_TEXT.map(k => PLACE_QUESTIONS.includes(k) ? `<div data-for="placeQ">${metaField(k, m[k])}</div>` : metaField(k, m[k])).join('')}
-    ${metaField('credit', m.credit, false)}
-    ${metaField('tags', (m.tags || []).join(', '), false)}
+    <h2>${editing ? `${t('edit')} · ${t('type_' + ty)}` : t('add_' + ty)}</h2>
+    ${main}
+    ${adv ? `<details class="advanced"><summary>${t('advanced')}</summary>${adv}</details>` : ''}
     <progress hidden max="1" value="0"></progress>
     <p class="err"></p>
     <menu><button type="button" data-cancel>${t('cancel')}</button><button>${t('save')}</button></menu>`,
     async (fd, f) => {
-      const ty = editing ? existing.type : form.elements.type.value;
-      const meta = { ...m, tags: readTags(fd), capturedAt: fd.get('capturedAt') ? new Date(fd.get('capturedAt')).toISOString() : null };
-      for (const k of ['title', ...META_TEXT, 'credit', 'text', 'device']) meta[k] = fd.get(k) || '';
+      const has = k => f.elements[k] !== undefined;
+      const meta = { ...m };                          // fields not in this form keep their value
+      for (const k of META_KEYS) if (has(k)) meta[k] = fd.get(k) || '';
+      if (has('tags')) meta.tags = readTags(fd);
+      if (has('capturedAt')) meta.capturedAt = fd.get('capturedAt') ? new Date(fd.get('capturedAt')).toISOString() : null;
+      else if (!editing) meta.capturedAt = new Date().toISOString();
       const item = { meta };
-      const link = String(fd.get('videoLink') || '').trim(), hasFile = !!prepared;
       if (ty === 'text' && (meta.text || '').length > L.textMax) throw new Error(t('chars').replace('{n}', meta.text.length).replace('{max}', L.textMax));
       if (ty === 'video') {
+        const link = String(fd.get('videoLink') || '').trim();
         if (!videoEmbed(link)) throw new Error(t('videoLinkInvalid'));
         item.videoLink = link; if (!editing) item.media = null;
-      } else if (ty !== 'text' && (hasFile || !editing)) {
-        if (!hasFile) throw new Error(t('file') + ' ?');
+      } else if (has('file') && (prepared || !editing)) {
+        if (!prepared) throw new Error(t('file') + ' ?');
         if (!prepared.check.ok) throw new Error(t('lim_fixFirst'));
         const bar = f.querySelector('progress'); bar.hidden = false;
         item.media = await uploadMedia(state.config, ty, prepared.file, p => (bar.value = p));
       }
+      const rot = has('rotationDeg') ? Number(fd.get('rotationDeg')) || 0 : 0;
       if (ty === 'ir') {
-        item.irInfo = { format: fd.get('irFormat'), method: fd.get('irMethod'), raw: fd.get('irRaw') === 'on',
-          source: fd.get('irSource') || '', receiver: fd.get('irReceiver') || '', rotationDeg: Number(fd.get('rotationDeg')) || 0 };
-        item.linkedPano = fd.get('linkedPano') || null;
+        const method = fd.get('irMethod');
+        item.irInfo = { format: fd.get('irFormat'), method, raw: ['clap', 'balloon'].includes(method) && fd.get('irRaw') === 'on',
+          source: fd.get('irSource') || '', receiver: fd.get('irReceiver') || '', rotationDeg: rot };
+        if (has('linkedPano')) item.linkedPano = fd.get('linkedPano') || null;
       }
-      if (ty === 'pano') { item.panoInfo = { northOffsetDeg: Number(fd.get('rotationDeg')) || 0 }; item.linkedIR = fd.get('linkedIR') || null; }
+      if (ty === 'pano') { item.panoInfo = { northOffsetDeg: rot }; if (has('linkedIR')) item.linkedIR = fd.get('linkedIR') || null; }
       if (editing) await state.backend.updateItem(state.point.id, existing.id, item);
       else await state.backend.addItem(state.point.id, { type: ty, ...item });
     });
 
-  const box = form.querySelector('.filecheck');
-  const curType = () => (editing ? existing.type : form.elements.type.value);
-  if (!editing && lockType) form.elements.type.value = type;
+  // "raw clap/balloon" only makes sense for those methods.
+  const method = form.elements.irMethod, rawRow = form.querySelector('.raw-row');
+  if (method && rawRow) { const syncRaw = () => (rawRow.hidden = !['clap', 'balloon'].includes(method.value)); method.addEventListener('change', syncRaw); syncRaw(); }
+  // Character counter for texts.
+  const chars = form.querySelector('.chars'), textEl = form.elements.text;
+  if (chars && textEl) { const count = () => (chars.textContent = t('chars').replace('{n}', textEl.value.length).replace('{max}', L.textMax)); textEl.addEventListener('input', count); count(); }
+  // File checks (type, size, duration) with fixes; admins may override size / duration.
+  const fileEl = form.elements.file;
+  if (!fileEl) return;
+  const box = form.querySelector('.filecheck'), hint = form.querySelector('.limits-hint');
+  const g = GROUP[ty];
+  hint.textContent = ['photo', 'pano'].includes(ty) ? t('lim_hintImage').replace('{max}', ty === 'pano' ? L.panoMaxMB : L.photoMaxMB) : t('lim_hintSound').replace('{max}', L.soundMaxMB);
+  if (isAdmin(state.user)) hint.textContent += ' ' + t('lim_adminHint').replace('{max}', L.adminMaxMB);
+  if (g && !editing) hint.textContent += ' ' + t('lim_count').replace('{n}', groupCount(g)).replace('{max}', L.perPlace[g]);
   const fill = (key, info = {}) => t(key).replace('{size}', fmtMB(info.size || 0)).replace('{max}', fmtMB(info.max || 0)).replace('{dur}', fmtDur(info.dur || 0));
   const showCheck = () => {
     box.hidden = !prepared;
@@ -591,44 +620,26 @@ function showItemForm(type, existing = null, { lockType = false } = {}) {
     box.querySelector('[data-override]')?.addEventListener('click', () => { prepared = { file, check: ov.check }; showCheck(); });
     box.querySelectorAll('[data-fix]').forEach(b => (b.onclick = async () => {
       b.disabled = true; b.textContent = t('fixing');
-      try { prepared = await fixAndCheck(curType(), check.fixes[Number(b.dataset.fix)], L); }
+      try { prepared = await fixAndCheck(ty, check.fixes[Number(b.dataset.fix)], L); }
       catch (e) { console.warn(e); box.insertAdjacentHTML('beforeend', `<p class="warn">${esc(t('audioError'))} (${esc(e.message)})</p>`); }
       showCheck();
     }));
   };
-  form.elements.file.addEventListener('change', async () => {
-    const file = form.elements.file.files[0];
+  fileEl.addEventListener('change', async () => {
+    const file = fileEl.files[0];
     prepared = null; showCheck();
     if (!file) return;
     box.hidden = false; box.innerHTML = `<p class="hint small">${t('checking')}</p>`;
-    prepared = { file, check: await checkFile(curType(), file, L) };
+    prepared = { file, check: await checkFile(ty, file, L) };
     showCheck();
   });
-  const chars = form.querySelector('.chars'), textEl = form.elements.text;
-  const countChars = () => (chars.textContent = t('chars').replace('{n}', textEl.value.length).replace('{max}', L.textMax));
-  textEl.addEventListener('input', countChars); countChars();
-  const sync = () => {
-    const ty = curType();
-    const show = { file: !['text', 'video'].includes(ty), video: ty === 'video', text: ty === 'text', ir: ty === 'ir', panoLink: ty === 'pano', rot: ty === 'ir' || ty === 'pano', device: ty === 'audio' || ty === 'ir', placeQ: !['photo', 'pano'].includes(ty) };
-    form.querySelectorAll('[data-for]').forEach(el => (el.hidden = !show[el.dataset.for]));
-    if (ACCEPT[ty]) form.elements.file.accept = ACCEPT[ty];
-    const g = GROUP[ty];
-    form.querySelector('.limits-hint').textContent = ['photo', 'pano'].includes(ty)
-      ? t('lim_hintImage').replace('{max}', ty === 'pano' ? L.panoMaxMB : L.photoMaxMB)
-      : ['audio', 'ir'].includes(ty) ? t('lim_hintSound').replace('{max}', L.soundMaxMB) : '';
-    if (isAdmin(state.user) && ['photo', 'pano', 'audio', 'ir'].includes(ty)) form.querySelector('.limits-hint').textContent += ' ' + t('lim_adminHint').replace('{max}', L.adminMaxMB);
-    if (g && !editing) form.querySelector('.limits-hint').textContent += ' ' + t('lim_count').replace('{n}', groupCount(g)).replace('{max}', L.perPlace[g]);
-    if (prepared) { prepared = null; form.elements.file.value = ''; showCheck(); }
-  };
-  form.elements.type.addEventListener('change', sync); sync();
 }
 
 // ---------- acoustics tab ----------
 function renderAcoustics(el, items) {
   const irs = items.filter(it => it.type === 'ir');
   if (!irs.length) {
-    el.innerHTML = `<p class="empty">${t('noIR')}</p>${state.user && !state.backend.readOnly ? `<button class="wide add-ir">+ ${t('type_ir')}</button>` : ''}`;
-    el.querySelector('.add-ir')?.addEventListener('click', () => showItemForm('ir'));
+    el.innerHTML = `<p class="empty">${t('noIR')}</p>`;
     return;
   }
   const cur = irs.find(x => x.id === state.acousticsIR) || irs[0];
@@ -641,11 +652,14 @@ function renderAcoustics(el, items) {
       ${pano ? `<button class="wide grad open-cavern">${t('openCavern')}</button><p class="hint small">${t('cavernAvailable')}</p>` : ''}
       <div class="player"></div>
     </div>
-    <div class="analysis"></div>`;
+    <div class="analysis"></div>
+    <h3 class="section-title">${t('irFiles')}</h3>
+    ${irs.map(itemCard).join('')}`;
   el.querySelector('.ir-pick').onchange = e => { stopAll(); state.acousticsIR = e.target.value; renderPanel(); };
   el.querySelector('.open-cavern')?.addEventListener('click', () => { stopAll(); openViewer(pano, cur); });
   mountPlayer(el.querySelector('.player'), cur, { samples: state.config.audio.samples, recordings: items.filter(it => it.type === 'audio'), t, tr, esc });
   mountAnalysis(el.querySelector('.analysis'), cur, t);
+  el.querySelectorAll('[data-act]').forEach(b => (b.onclick = () => itemAction(b.dataset.act, b.dataset.id)));
 }
 
 // ---------- full-screen 360° / CAVERN viewer ----------

@@ -109,7 +109,8 @@
     "perPlace": {
       "images": 3,
       "sounds": 3,
-      "texts": 5
+      "texts": 5,
+      "irs": 3
     },
     "adminMaxMB": 50
   }

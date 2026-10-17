@@ -1,5 +1,25 @@
 # METIS change log
 
+## 2026-10-17 — v0.8 clean upload forms; IRs only in Acoustique
+
+- **IRs live in Acoustique**: the Sons tab lists and adds recordings only. Acoustique has "+ Réponse impulsionnelle", the player,
+  the analysis and the IR cards (edit/hide/delete). IRs now have their own per-place limit (`perPlace.irs` = 3; before, they shared
+  "sounds" with recordings). Admins can raise it in "Modifier le lieu".
+- **One form per type** (`FORM_FIELDS`), with no "Type" dropdown (the button chooses it) and a type-specific title ("Ajouter une photo"…).
+  The place questions (who uses / intended / non-intended uses) are removed from every file form; they belong to the place.
+  - Photo: file, title, date, description, sensory notes, credit, tags.
+  - 360°: same + linked IR; orientation under "Options avancées".
+  - Video: link, title, date, description, credit, tags.
+  - Recording: file, title, date, description, sensory notes, conditions, recording device, credit, tags.
+  - IR: file, title, date, format (readable names: "Ambisonique 1er ordre — AmbiX (4 canaux)"…), method, "raw clap/balloon"
+    (only shown for clap/balloon), source, receiver/mic, linked 360°, description, tags; mic orientation under "Options avancées".
+  - Text: title, text (1 000), author/source, tags.
+- Editing only writes the fields its form shows; the other metadata keeps its value. Before, every metadata key was rewritten, so
+  hiding fields could have erased values.
+- Tests (mock, headless Chrome): fields per form as listed; Sons buttons = audio only; Acoustique buttons = IR only; the raw checkbox
+  is hidden for sweeps; editing a photo's title keeps a hidden `users` value; the full walkthrough passes (tabs, players, CAVERN, edit,
+  delete, logout, EN). No errors.
+
 ## 2026-10-17 — v0.7.1 cleanup verified live
 
 - First dry run failed: Cloudinary answered "unknown api_key". Added a diagnostic that describes the shape of rejected credentials

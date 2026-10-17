@@ -6,9 +6,9 @@
 export const DEFAULT_LIMITS = {
   photoMaxMB: 2, panoMaxMB: 6, soundMaxMB: 10, maxSoundSec: 300, textMax: 1000,
   adminMaxMB: 50, // admins may upload heavier / longer files as they are, up to this ceiling
-  perPlace: { images: 3, sounds: 3, texts: 5 },
+  perPlace: { images: 3, sounds: 3, irs: 3, texts: 5 },
 };
-export const GROUP = { photo: 'images', pano: 'images', audio: 'sounds', ir: 'sounds', text: 'texts' };
+export const GROUP = { photo: 'images', pano: 'images', audio: 'sounds', ir: 'irs', text: 'texts' };
 
 const MB = 1024 * 1024;
 const ext = f => (f.name.split('.').pop() || '').toLowerCase();
