@@ -36,6 +36,8 @@ const IR_FORMATS = ['mono', 'stereo', 'binaural', 'foa-ambix', 'foa-fuma'];
 const IR_METHODS = ['clap', 'balloon', 'sweep', 'other'];
 const META_TEXT = ['description', 'users', 'intendedUse', 'unintendedUses', 'poetic', 'conditions'];
 const PLACE_META = [...META_TEXT];
+// Questions about the place itself; not asked again for each image (they live in the place's Infos tab).
+const PLACE_QUESTIONS = ['users', 'intendedUse', 'unintendedUses'];
 
 const state = {
   config: null, backend: null, map: null, user: null, adding: false, moving: null,
@@ -483,7 +485,7 @@ function showItemForm(type, existing = null) {
     <div data-for="device">${metaField('device', m.device, false)}</div>
     ${metaField('title', m.title, false)}
     <label>${t('f_capturedAt')}<input name="capturedAt" type="datetime-local" value="${local(m.capturedAt)}"></label>
-    ${META_TEXT.map(k => metaField(k, m[k])).join('')}
+    ${META_TEXT.map(k => PLACE_QUESTIONS.includes(k) ? `<div data-for="placeQ">${metaField(k, m[k])}</div>` : metaField(k, m[k])).join('')}
     ${metaField('credit', m.credit, false)}
     ${metaField('tags', (m.tags || []).join(', '), false)}
     <progress hidden max="1" value="0"></progress>
@@ -549,7 +551,7 @@ function showItemForm(type, existing = null) {
   textEl.addEventListener('input', countChars); countChars();
   const sync = () => {
     const ty = curType();
-    const show = { file: !['text', 'video'].includes(ty), video: ty === 'video', text: ty === 'text', ir: ty === 'ir', panoLink: ty === 'pano', rot: ty === 'ir' || ty === 'pano', device: ty === 'audio' || ty === 'ir' };
+    const show = { file: !['text', 'video'].includes(ty), video: ty === 'video', text: ty === 'text', ir: ty === 'ir', panoLink: ty === 'pano', rot: ty === 'ir' || ty === 'pano', device: ty === 'audio' || ty === 'ir', placeQ: !['photo', 'pano'].includes(ty) };
     form.querySelectorAll('[data-for]').forEach(el => (el.hidden = !show[el.dataset.for]));
     if (ACCEPT[ty]) form.elements.file.accept = ACCEPT[ty];
     const g = GROUP[ty];

@@ -1,5 +1,11 @@
 # METIS change log
 
+## 2026-10-17 — v0.6.3 image form without the place questions
+
+- Photo and 360° uploads no longer ask the place-level questions ("Qui utilise cet espace ?", "Usage prévu", "Usages non prévus
+  observés"); these belong to the place (Infos tab). Still asked for recordings, IRs and texts. Hidden fields keep existing values when editing.
+- Checked in headless Chrome (mock): the visible fields per type match the above.
+
 ## 2026-10-17 — v0.6.2 uploads verified on the live site; automatic retry
 
 **Cloudinary connected**: cloud `cwmp8wdp`, unsigned preset `metis_esaaa` (saved by Luna in ⚙ Settings → Firestore).
