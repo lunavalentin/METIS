@@ -1,0 +1,8 @@
+.DS_Store
+node_modules/
+serviceAccount*.json
+accounts.csv
+credentials_PRIVATE.csv
+Start.txt
+deno.lock
+tools/deno.lock

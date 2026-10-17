@@ -1,0 +1,103 @@
+{
+  "backend": "firebase",
+  "project": {
+    "id": "template",
+    "title": {
+      "fr": "METIS",
+      "en": "METIS"
+    },
+    "subtitle": {
+      "fr": "Cartographier les milieux par les traces, les images et le son",
+      "en": "Mapping environments through Traces, Images and Sound"
+    },
+    "defaultLang": "fr",
+    "charterPath": "charter/{lang}.md"
+  },
+  "firebase": {
+    "apiKey": "TODO",
+    "authDomain": "TODO.firebaseapp.com",
+    "projectId": "TODO",
+    "appId": "TODO"
+  },
+  "accounts": {
+    "emailDomain": "template.metis"
+  },
+  "cloudinary": {
+    "cloudName": "TODO",
+    "uploadPreset": "TODO",
+    "folder": "metis/template"
+  },
+  "map": {
+    "mode": "geo",
+    "center": [
+      45.8932,
+      6.1352
+    ],
+    "zoom": 18,
+    "maxZoom": 22,
+    "planBounds": {
+      "xmax": 100,
+      "ymax": 60
+    }
+  },
+  "floors": [
+    {
+      "id": "ext",
+      "label": {
+        "fr": "Extérieur",
+        "en": "Outdoor"
+      }
+    },
+    {
+      "id": "rdc",
+      "label": {
+        "fr": "Rez-de-chaussée",
+        "en": "Ground floor"
+      }
+    }
+  ],
+  "layers": [
+    {
+      "id": "plan-rdc",
+      "label": {
+        "fr": "Plan RDC",
+        "en": "Ground floor plan"
+      },
+      "floor": "rdc",
+      "url": "assets/layers/plan_rdc.png",
+      "opacity": 0.8,
+      "placement": {
+        "center": [
+          45.8992,
+          6.1294
+        ],
+        "widthM": 60,
+        "heightM": 40,
+        "rotationDeg": 0
+      }
+    }
+  ],
+  "audio": {
+    "samples": [
+      {
+        "label": {
+          "fr": "Voix",
+          "en": "Voice"
+        },
+        "url": "assets/samples/voice.wav"
+      },
+      {
+        "label": {
+          "fr": "Claquement",
+          "en": "Clap"
+        },
+        "url": "assets/samples/clap.wav"
+      }
+    ]
+  },
+  "upload": {
+    "photoMaxPx": 2560,
+    "panoMaxW": 5760,
+    "maxVideoMB": 100
+  }
+}

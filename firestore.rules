@@ -1,0 +1,57 @@
+rules_version = '2';
+// METIS Firestore rules. Roles come from custom claims set by tools/create_accounts.mjs.
+// Note: "hidden" is enforced in the UI only; a hidden item stays readable through the API.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function role() { return signedIn() ? request.auth.token.get('role', 'student') : null; }
+    function isAdmin() { return role() == 'admin'; }
+    function isStaff() { return role() in ['admin', 'instructor']; }
+    function projectPublic(pid) {
+      return get(/databases/$(database)/documents/projects/$(pid)).data.get('public', false) == true;
+    }
+    function canRead(pid) { return signedIn() || projectPublic(pid); }
+    function onlyChanges(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
+
+    match /projects/{pid} {
+      allow read: if canRead(pid);
+      allow write: if isAdmin();
+
+      match /layers/{lid} {
+        allow read: if canRead(pid);
+        allow write: if isStaff();
+      }
+
+      match /points/{ptid} {
+        allow read: if canRead(pid);
+        allow create: if signedIn()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string && request.resource.data.name.size() <= 80;
+        // Anyone signed in may append to the media-type summary; the owner/staff may edit the rest.
+        allow update: if signedIn() && (onlyChanges(['types'])
+          || resource.data.createdBy == request.auth.uid || isStaff());
+        allow delete: if isStaff() || (signedIn() && resource.data.createdBy == request.auth.uid);
+
+        match /items/{iid} {
+          allow read: if canRead(pid);
+          allow create: if signedIn()
+            && request.resource.data.author.uid == request.auth.uid
+            && request.resource.data.hidden == false
+            && request.resource.data.type in ['photo', 'video', 'pano', 'ir', 'audio', 'text'];
+          allow update: if isStaff()
+            || (signedIn() && resource.data.author.uid == request.auth.uid
+                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hidden', 'hiddenBy', 'author']));
+          allow delete: if isStaff() || (signedIn() && resource.data.author.uid == request.auth.uid);
+        }
+      }
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['displayName', 'role', 'charterAcceptedAt'])
+        && (!('role' in request.resource.data) || (resource != null && request.resource.data.role == resource.data.role));
+    }
+  }
+}
