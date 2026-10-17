@@ -63,7 +63,7 @@ function parseAiff(buf) {
   return { sampleRate: rate, channels: chans };
 }
 
-async function decodeSound(file) {
+export async function decodeSound(file) {
   const ab = await file.arrayBuffer();
   if (isAiff(file)) return parseAiff(ab);
   const b = await audioCtx().decodeAudioData(ab);

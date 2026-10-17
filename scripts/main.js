@@ -5,7 +5,9 @@ import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
 import { MetisMap, TYPE_COLORS } from './map.js';
 import { uploadMedia, videoEmbed, thumbnail } from './upload.js';
-import { checkFile, fixAndCheck, adminOverride, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
+import { checkFile, fixAndCheck, adminOverride, decodeSound, encodeWav, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
+import { processIR, METIS_SWEEP } from './irprocess.js';
+import { analyseIR } from './irAnalysis.js';
 import { mountPlayer, mountAnalysis, stopAll, isPlaying, setOrientation, linkedPano, linkedIR } from './acoustics.js';
 
 const $ = sel => document.querySelector(sel);
@@ -451,7 +453,8 @@ function metaBlock(it) {
   const rows = [
     ...META_TEXT.filter(k => m[k]).map(k => [t('f_' + k), m[k]]),
     ...(m.device ? [[t('f_device'), m.device]] : []),
-    ...(ir ? [[t('f_irFormat'), ir.format], [t('f_irMethod'), t('method_' + ir.method)], ...(ir.source ? [[t('f_irSource'), ir.source]] : []), ...(ir.receiver ? [[t('f_irReceiver'), ir.receiver]] : [])] : []),
+    ...(ir ? [[t('f_irFormat'), t('irfmt_' + String(ir.format).replace('-', '_'))], [t('f_irMethod'), t('method_' + ir.method)], ...(ir.source ? [[t('f_irSource'), ir.source]] : []), ...(ir.receiver ? [[t('f_irReceiver'), ir.receiver]] : []),
+      ...(ir.processing?.steps?.length ? [[t('proc_title'), ir.processing.steps.map(x => t('procstep_' + x)).join(' · ') + (ir.processing.deconv ? ` (${t('proc_' + ir.processing.deconv)})` : '')]] : [])] : []),
     ...(m.credit ? [[t('f_credit'), m.credit]] : []),
   ].map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
   const tags = (m.tags || []).map(x => `<span class="tag">${esc(x)}</span>`).join('');
@@ -511,7 +514,7 @@ const FORM_FIELDS = {
   pano: ['file', 'title', 'capturedAt', 'description', 'poetic', 'linkIR', 'credit', 'tags', 'adv:rotation'],
   video: ['videoLink', 'title', 'capturedAt', 'description', 'credit', 'tags'],
   audio: ['file', 'title', 'capturedAt', 'description', 'poetic', 'conditions', 'device', 'credit', 'tags'],
-  ir: ['file', 'title', 'capturedAt', 'irFormat', 'irMethod', 'irRaw', 'irSource', 'irReceiver', 'linkPano', 'description', 'tags', 'adv:rotation'],
+  ir: ['file', 'title', 'capturedAt', 'irFormat', 'irMethod', 'irSource', 'irReceiver', 'linkPano', 'description', 'tags', 'adv:process', 'adv:rotation'],
   text: ['title', 'text', 'credit', 'tags'],
 };
 const META_KEYS = ['title', 'description', 'poetic', 'conditions', 'device', 'credit', 'text'];
@@ -544,11 +547,25 @@ function showItemForm(type, existing = null) {
     tags: () => metaField('tags', (m.tags || []).join(', '), false),
     irFormat: () => `<label>${t('f_irFormat')}${sel('irFormat', IR_FORMATS.map(f => [f, t('irfmt_' + f.replace('-', '_'))]), ir.format || 'mono')}</label>`,
     irMethod: () => `<label>${t('f_irMethod')}${sel('irMethod', IR_METHODS.map(f => [f, t('method_' + f)]), ir.method || 'clap')}</label>`,
-    irRaw: () => `<label class="check raw-row"><input type="checkbox" name="irRaw" ${ir.raw ? 'checked' : ''}> ${t('rawClap')}</label>`,
     irSource: () => metaField('irSource', ir.source, false),
     irReceiver: () => metaField('irReceiver', ir.receiver, false),
     linkPano: () => (panos.length ? `<label>${t('f_linkPano')}${linkSel('linkedPano', panos, existing?.linkedPano)}</label>` : ''),
     linkIR: () => (irs.length ? `<label>${t('f_linkIR')}${linkSel('linkedIR', irs, existing?.linkedIR)}</label>` : ''),
+    process: () => `<div class="ir-process">
+      <p class="hint small">${t('proc_intro')}</p>
+      <label class="check"><input type="checkbox" name="pNormalize" checked> ${t('proc_normalize')}</label>
+      <label class="check"><input type="checkbox" name="pAlign" checked> ${t('proc_align')}</label>
+      <label class="check"><input type="checkbox" name="pTrim"> ${t('proc_trim')}</label>
+      <label>${t('proc_deconv')}<select name="pDeconv">
+        <option value="">${t('proc_none')}</option><option value="metis">${t('proc_metis')}</option>
+        <option value="custom">${t('proc_custom')}</option><option value="reference">${t('proc_reference')}</option></select></label>
+      <div class="p-custom limits-row" hidden>
+        <label>${t('proc_f1')}<input type="number" name="pF1" min="1" value="${METIS_SWEEP.f1}"></label>
+        <label>${t('proc_f2')}<input type="number" name="pF2" min="1" value="${METIS_SWEEP.f2}"></label>
+        <label>${t('proc_dur')}<input type="number" name="pDur" min="0.1" step="0.1" value="${METIS_SWEEP.duration}"></label></div>
+      <label class="p-ref" hidden>${t('proc_refFile')}<input type="file" name="pRef" accept="${SOUND_ACCEPT}"></label>
+      <button type="button" class="grad" data-preview>${t('proc_preview')}</button>
+      <div class="ir-preview"></div></div>`,
     rotation: () => `<label>${t(ty === 'ir' ? 'f_irRotation' : 'f_panoNorth')}<input name="rotationDeg" type="number" step="1" value="${esc(rotValue ?? 0)}"></label><p class="hint small">${t('rotationHint')}</p>`,
   };
   const fields = FORM_FIELDS[ty];
@@ -576,6 +593,7 @@ function showItemForm(type, existing = null) {
         item.videoLink = link; if (!editing) item.media = null;
       } else if (has('file') && (prepared || !editing)) {
         if (!prepared) throw new Error(t('file') + ' ?');
+        if (ty === 'ir' && procWanted() && prepared.procKey !== procKey()) await runProcessing();
         if (!prepared.check.ok) throw new Error(t('lim_fixFirst'));
         const bar = f.querySelector('progress'); bar.hidden = false;
         item.media = await uploadMedia(state.config, ty, prepared.file, p => (bar.value = p));
@@ -583,8 +601,10 @@ function showItemForm(type, existing = null) {
       const rot = has('rotationDeg') ? Number(fd.get('rotationDeg')) || 0 : 0;
       if (ty === 'ir') {
         const method = fd.get('irMethod');
-        item.irInfo = { format: fd.get('irFormat'), method, raw: ['clap', 'balloon'].includes(method) && fd.get('irRaw') === 'on',
-          source: fd.get('irSource') || '', receiver: fd.get('irReceiver') || '', rotationDeg: rot };
+        // A new file was processed here (or uploaded as is): no playback-time clean-up. Editing without a new file keeps the old flag.
+        item.irInfo = { format: fd.get('irFormat'), method, raw: prepared ? false : !!ir.raw,
+          source: fd.get('irSource') || '', receiver: fd.get('irReceiver') || '', rotationDeg: rot,
+          processing: prepared?.procReport || ir.processing || null };
         if (has('linkedPano')) item.linkedPano = fd.get('linkedPano') || null;
       }
       if (ty === 'pano') { item.panoInfo = { northOffsetDeg: rot }; if (has('linkedIR')) item.linkedIR = fd.get('linkedIR') || null; }
@@ -592,12 +612,54 @@ function showItemForm(type, existing = null) {
       else await state.backend.addItem(state.point.id, { type: ty, ...item });
     });
 
-  // "raw clap/balloon" only makes sense for those methods.
-  const method = form.elements.irMethod, rawRow = form.querySelector('.raw-row');
-  if (method && rawRow) { const syncRaw = () => (rawRow.hidden = !['clap', 'balloon'].includes(method.value)); method.addEventListener('change', syncRaw); syncRaw(); }
+  // IR processing options: method "sweep" suggests the METIS sweep; extra inputs for custom / reference deconvolution.
+  const pDeconv = form.elements.pDeconv, method = form.elements.irMethod;
+  if (pDeconv) {
+    const syncP = () => { form.querySelector('.p-custom').hidden = pDeconv.value !== 'custom'; form.querySelector('.p-ref').hidden = pDeconv.value !== 'reference'; };
+    pDeconv.addEventListener('change', syncP);
+    method?.addEventListener('change', () => { if (method.value === 'sweep' && !pDeconv.value) pDeconv.value = 'metis'; if (method.value !== 'sweep' && pDeconv.value === 'metis') pDeconv.value = ''; syncP(); });
+    syncP();
+  }
   // Character counter for texts.
   const chars = form.querySelector('.chars'), textEl = form.elements.text;
   if (chars && textEl) { const count = () => (chars.textContent = t('chars').replace('{n}', textEl.value.length).replace('{max}', L.textMax)); textEl.addEventListener('input', count); count(); }
+  // --- IR processing (deconvolve → align → trim → normalise), applied to the chosen file before upload ---
+  const procOpts = () => ({
+    normalize: !!form.elements.pNormalize?.checked, align: !!form.elements.pAlign?.checked, trim: !!form.elements.pTrim?.checked,
+    deconvKind: pDeconv?.value || '',
+    params: pDeconv?.value === 'custom' ? { f1: Number(form.elements.pF1.value), f2: Number(form.elements.pF2.value), duration: Number(form.elements.pDur.value) } : METIS_SWEEP,
+    ref: form.elements.pRef?.files?.[0] || null,
+  });
+  const procWanted = () => { const o = procOpts(); return o.normalize || o.align || o.trim || !!o.deconvKind; };
+  const procKey = () => { const o = procOpts(); return JSON.stringify({ ...o, ref: o.ref ? `${o.ref.name}:${o.ref.size}` : null }); };
+  async function runProcessing() {
+    const src = prepared?.original || prepared?.file;
+    if (!src) throw new Error(t('file') + ' ?');
+    const o = procOpts(), out = form.querySelector('.ir-preview');
+    out.innerHTML = `<p class="hint small">${t('fixing')}</p>`;
+    let deconv = null;
+    if (o.deconvKind === 'reference') { if (!o.ref) throw new Error(t('proc_refMissing')); deconv = { kind: 'reference', reference: await decodeSound(o.ref) }; }
+    else if (o.deconvKind) {
+      if (!(o.params.f1 > 0 && o.params.f2 > o.params.f1 && o.params.duration > 0)) throw new Error(t('proc_badParams'));
+      deconv = { kind: 'ess', params: o.params };
+    }
+    const { snd, report } = processIR(await decodeSound(src), { deconv, align: o.align, trim: o.trim, normalize: o.normalize });
+    const file = new File([encodeWav(snd, 24)], src.name.replace(/\.[^.]+$/, '') + '_ri.wav', { type: 'audio/wav' });
+    prepared = { file, original: src, check: await checkFile('ir', file, L), procKey: procKey(),
+      procReport: { steps: report.steps, deconv: o.deconvKind || null, ...(o.deconvKind === 'custom' ? { sweep: o.params } : {}),
+        ...(o.deconvKind === 'reference' ? { referenceFile: o.ref.name } : {}), removedMs: report.removedMs != null ? Math.round(report.removedMs * 10) / 10 : null, sourceFile: src.name } };
+    const a = analyseIR(snd.channels[0], snd.sampleRate), f = v => (v == null || !isFinite(v) ? '—' : v.toFixed(2) + ' s');
+    out.innerHTML = `<p class="ok">✓ ${t('proc_done')}: ${report.lengthS.toFixed(2)} s · ${snd.channels.length} ${t('proc_ch')} · ${snd.sampleRate} Hz`
+      + (report.removedMs != null ? ` · ${t('proc_removed').replace('{ms}', report.removedMs.toFixed(1))}` : '') + ` · T30 ${f(a.T30)} · EDT ${f(a.EDT)}</p>`
+      + `<audio controls src="${URL.createObjectURL(file)}"></audio>`;
+    showCheck();
+  }
+  form.querySelector('[data-preview]')?.addEventListener('click', async e => {
+    e.target.disabled = true;
+    try { await runProcessing(); } catch (err) { console.warn(err); form.querySelector('.ir-preview').innerHTML = `<p class="warn">${esc(err.message)}</p>`; }
+    e.target.disabled = false;
+  });
+
   // File checks (type, size, duration) with fixes; admins may override size / duration.
   const fileEl = form.elements.file;
   if (!fileEl) return;

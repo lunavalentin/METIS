@@ -1,5 +1,36 @@
 # METIS change log
 
+## 2026-10-17 — v0.9 IR processing at upload (normalise, align, trim, sweep deconvolution)
+
+Luna asked for advanced IR options: normalise, align (remove pre-delay), deconvolve a sweep, etc.
+
+**New `scripts/irprocess.js`** (pure functions; own radix-2 FFT):
+- **Deconvolution of a recorded exponential sweep**: (a) parametric ESS (Farina inverse filter: time-reversed sweep with a −6 dB/oct
+  envelope, gain-calibrated in-band), with the **METIS sweep preset** (100 Hz–8 kHz, 1.5 s, 20 ms fades = `assets/samples/sweep.wav`) or
+  custom f1/f2/duration; (b) **reference file**: regularised spectral division Y·X*/(|X|²+ε), ε = −40 dB of max |X|².
+- **Align**: onset at −20 dB of the peak, searched within 50 ms before the peak (so ESS harmonic responses, ≥ 237 ms earlier for the
+  METIS sweep, are ignored); keeps 2 ms. Same cut on all channels.
+- **Trim**: cut where the 10 ms energy envelope comes within +3 dB of the noise floor, then a 10 ms fade. The floor is the median of the
+  last 20 % of the non-silent signal.
+- **Normalise**: peak at −1 dBFS. Output: **24-bit WAV, every channel kept**. After a deconvolution, align + trim always apply.
+- IR form → "Options avancées": the checkboxes, a deconvolution choice (method "sweep" preselects the METIS sweep), **"Appliquer et écouter"**
+  (preview player + duration, channels, removed pre-delay, T30, EDT), and automatic processing on save if not previewed.
+  This replaces the old "raw clap/balloon" checkbox (old items keep their flag). The processing history is stored in
+  `irInfo.processing` and shown in the IR's metadata.
+
+**Tests** (`tests/irprocess.test.mjs`, 13/13 PASS; synthetic room IR: 30 ms pre-delay + direct + noise tail RT = 0.8 s, METIS sweep, noise 1e-4):
+- ESS: correlation **1.0000 at lag 0** with the true IR in the same band; T30 0.797 vs 0.797 s; peak −1 dBFS; onset at 2.2 ms.
+- Reference file: correlation 0.991 at a 6-sample (0.13 ms) offset (a different pulse shape from the ESS kernel); T30 0.799 s.
+- Pre-delay removal on the true IR: 28.00 ms removed (expected 28). Tail trim at a −54 dB floor keeps 0.61 s (expected 0.5–0.65 s).
+- Corrections to *my test design* along the way: (1) comparing a 100 Hz–8 kHz result with a full-band truth was meaningless → the test now
+  compares in the same band; (2) I expected the deconvolved tail to hit the noise at ≈ 0.84 s, but the measured envelope shows the ESS
+  SNR gain keeps the decay clean down to ≈ −114 dB at 1.6 s → the expectation was corrected. A real fix came out of it: the trim's
+  noise-floor estimate now ignores trailing digital silence, which had prevented any trimming.
+- Browser (mock + real Cloudinary upload): a 3.5 s recording of the METIS sweep → preview "2.01 s, T30 0.80 s, EDT 0.78 s"; with the
+  reference file → "1.51 s, T30 0.80 s". The processed 24-bit WAV (217 KB) was uploaded and stored with its processing history.
+  The removed pre-delay was first shown as 1927.8 ms (it included the 1.5 s deconvolution shift) → now only the acoustic pre-delay is reported.
+- **Not tested**: real measured sweeps, multichannel (FOA) sweep recordings in the browser, and speed on phones (FFT of ~2^18–2^20 points).
+
 ## 2026-10-17 — v0.8.1 no stale translations after an update
 
 - Luna saw raw keys (`add_text`, `f_creditText`) right after v0.8 went live. The live `i18n/*.json` were correct, but her browser
