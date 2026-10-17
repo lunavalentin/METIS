@@ -6,7 +6,8 @@ export async function initI18n(defaultLang) {
   let saved = null;
   try { saved = localStorage.getItem('metis.lang'); } catch {}
   lang = saved || defaultLang || 'fr';
-  for (const l of ['fr', 'en']) strings[l] = await (await fetch(`i18n/${l}.json`)).json();
+  // Always revalidate (cheap 304 when unchanged): a stale translation file next to new code shows raw keys after an update.
+  for (const l of ['fr', 'en']) strings[l] = await (await fetch(`i18n/${l}.json`, { cache: 'no-cache' })).json();
   document.documentElement.lang = lang;
 }
 

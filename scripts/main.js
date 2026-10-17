@@ -48,7 +48,7 @@ const state = {
 boot().catch(e => { console.error(e); document.body.insertAdjacentHTML('beforeend', `<p class="fatal">${esc(e.message)}</p>`); });
 
 async function boot() {
-  state.config = await (await fetch('config.json')).json();
+  state.config = await (await fetch('config.json', { cache: 'no-cache' })).json();
   await initI18n(state.config.project.defaultLang);
   state.backend = await createBackend(state.config);
   renderHeader();

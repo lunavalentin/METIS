@@ -1,5 +1,11 @@
 # METIS change log
 
+## 2026-10-17 — v0.8.1 no stale translations after an update
+
+- Luna saw raw keys (`add_text`, `f_creditText`) right after v0.8 went live. The live `i18n/*.json` were correct, but her browser
+  had reused a cached copy (GitHub Pages sends `max-age=600`) next to the new `main.js`. `config.json` and `i18n/*.json` are now
+  fetched with `cache: 'no-cache'` (always revalidated; 304 when unchanged). JS modules can still be mixed for up to 10 min after a deploy.
+
 ## 2026-10-17 — v0.8 clean upload forms; IRs only in Acoustique
 
 - **IRs live in Acoustique**: the Sons tab lists and adds recordings only. Acoustique has "+ Réponse impulsionnelle", the player,
