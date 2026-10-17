@@ -110,6 +110,7 @@
       "images": 3,
       "sounds": 3,
       "texts": 5
-    }
+    },
+    "adminMaxMB": 50
   }
 }

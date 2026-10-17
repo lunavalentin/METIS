@@ -1,5 +1,15 @@
 # METIS change log
 
+## 2026-10-17 — v0.6.1 admins can upload heavier / longer files
+
+- When a file is over the size or duration limit, admins get an extra **"Envoyer tel quel (admin)"** button next to Compress / Convert.
+  It skips only `lim_imageBig`, `lim_soundBig` and `lim_soundLong`. Format checks and the AIFF → WAV conversion still apply.
+  There is a hard ceiling of `limits.adminMaxMB` = 50 MB per file. The form hint tells admins about it, and the file line shows
+  "limite levée par un·e admin".
+- Tests (mock, headless Chrome): admin + 34 MB PNG → override offered and accepted; admin + 66 MB WAV → no override
+  (over 50 MB), only trim/convert; student + 34 MB PNG → only Compress. No errors.
+- Open: Cloudinary free-plan per-file maximums are unverified. An admin upload above them will fail with Cloudinary's error.
+
 ## 2026-10-17 — v0.6 bounded uploads (Cloudinary kept)
 
 Luna considered Firebase Storage, but it needs the Blaze plan and a card, which cannot be hard-capped. After comparing the

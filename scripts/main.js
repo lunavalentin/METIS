@@ -5,7 +5,7 @@ import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
 import { MetisMap, TYPE_COLORS } from './map.js';
 import { uploadMedia, videoEmbed, thumbnail } from './upload.js';
-import { checkFile, fixAndCheck, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
+import { checkFile, fixAndCheck, adminOverride, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
 import { mountPlayer, mountAnalysis, stopAll, isPlaying, setOrientation, linkedPano, linkedIR } from './acoustics.js';
 
 const $ = sel => document.querySelector(sel);
@@ -522,9 +522,13 @@ function showItemForm(type, existing = null) {
     box.hidden = !prepared;
     if (!prepared) return;
     const { file, check } = prepared;
-    if (check.ok) { box.innerHTML = `<p class="ok">✓ ${esc(file.name)} · ${fmtMB(file.size)}${check.info?.dur ? ` · ${fmtDur(check.info.dur)}` : ''}</p>`; return; }
+    if (check.ok) { box.innerHTML = `<p class="ok">✓ ${esc(file.name)} · ${fmtMB(file.size)}${check.info?.dur ? ` · ${fmtDur(check.info.dur)}` : ''}${check.override ? ` · <b>${t('adminOverridden')}</b>` : ''}</p>`; return; }
+    const ov = isAdmin(state.user) ? adminOverride(check, file, L) : null;
     box.innerHTML = check.problems.map(k => `<p class="warn">${esc(fill(k, check.info))}</p>`).join('') +
-      check.fixes.map((fx, i) => `<button type="button" class="grad" data-fix="${i}">${t(fx.key)}</button>`).join('');
+      check.fixes.map((fx, i) => `<button type="button" class="grad" data-fix="${i}">${t(fx.key)}</button>`).join(' ') +
+      (ov?.allowed ? ` <button type="button" data-override>${t('fix_adminOverride')}</button>` : '') +
+      (ov && !ov.allowed ? `<p class="hint small">${esc(t('lim_adminTooBig').replace('{max}', fmtMB(ov.max)))}</p>` : '');
+    box.querySelector('[data-override]')?.addEventListener('click', () => { prepared = { file, check: ov.check }; showCheck(); });
     box.querySelectorAll('[data-fix]').forEach(b => (b.onclick = async () => {
       b.disabled = true; b.textContent = t('fixing');
       try { prepared = await fixAndCheck(curType(), check.fixes[Number(b.dataset.fix)], L); }
@@ -552,6 +556,7 @@ function showItemForm(type, existing = null) {
     form.querySelector('.limits-hint').textContent = ['photo', 'pano'].includes(ty)
       ? t('lim_hintImage').replace('{max}', ty === 'pano' ? L.panoMaxMB : L.photoMaxMB)
       : ['audio', 'ir'].includes(ty) ? t('lim_hintSound').replace('{max}', L.soundMaxMB) : '';
+    if (isAdmin(state.user) && ['photo', 'pano', 'audio', 'ir'].includes(ty)) form.querySelector('.limits-hint').textContent += ' ' + t('lim_adminHint').replace('{max}', L.adminMaxMB);
     if (g && !editing) form.querySelector('.limits-hint').textContent += ' ' + t('lim_count').replace('{n}', groupCount(g)).replace('{max}', L.perPlace[g]);
     if (prepared) { prepared = null; form.elements.file.value = ''; showCheck(); }
   };

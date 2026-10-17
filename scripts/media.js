@@ -5,6 +5,7 @@
 
 export const DEFAULT_LIMITS = {
   photoMaxMB: 2, panoMaxMB: 6, soundMaxMB: 10, maxSoundSec: 300, textMax: 1000,
+  adminMaxMB: 50, // admins may upload heavier / longer files as they are, up to this ceiling
   perPlace: { images: 3, sounds: 3, texts: 5 },
 };
 export const GROUP = { photo: 'images', pano: 'images', audio: 'sounds', ir: 'sounds', text: 'texts' };
@@ -147,6 +148,15 @@ export async function checkFile(type, file, limits = DEFAULT_LIMITS) {
     return { ok: false, problems, info: { dur, size: file.size, max }, fixes: [{ key, run }] };
   }
   return { ok: true, problems: [], fixes: [] };
+}
+
+// Admins may skip the size / duration limits (never the format checks, nor the AIFF → WAV conversion that playback needs).
+const OVERRIDABLE = new Set(['lim_imageBig', 'lim_soundBig', 'lim_soundLong']);
+export function adminOverride(check, file, limits = DEFAULT_LIMITS) {
+  const L = { ...DEFAULT_LIMITS, ...limits };
+  if (check.ok || !check.problems.length || !check.problems.every(p => OVERRIDABLE.has(p))) return null;
+  if (file.size > L.adminMaxMB * MB) return { allowed: false, max: L.adminMaxMB * MB };
+  return { allowed: true, check: { ok: true, problems: [], fixes: [], info: check.info, override: true } };
 }
 
 // After a fix, re-check the produced file (it must now pass, e.g. under the size limit).
