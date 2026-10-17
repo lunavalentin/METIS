@@ -612,12 +612,11 @@ function showItemForm(type, existing = null) {
       else await state.backend.addItem(state.point.id, { type: ty, ...item });
     });
 
-  // IR processing options: method "sweep" suggests the METIS sweep; extra inputs for custom / reference deconvolution.
+  // IR processing options: extra inputs for custom / reference deconvolution (default: none, whatever the acquisition method).
   const pDeconv = form.elements.pDeconv, method = form.elements.irMethod;
   if (pDeconv) {
     const syncP = () => { form.querySelector('.p-custom').hidden = pDeconv.value !== 'custom'; form.querySelector('.p-ref').hidden = pDeconv.value !== 'reference'; };
     pDeconv.addEventListener('change', syncP);
-    method?.addEventListener('change', () => { if (method.value === 'sweep' && !pDeconv.value) pDeconv.value = 'metis'; if (method.value !== 'sweep' && pDeconv.value === 'metis') pDeconv.value = ''; syncP(); });
     syncP();
   }
   // Character counter for texts.

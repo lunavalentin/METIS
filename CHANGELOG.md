@@ -1,5 +1,25 @@
 # METIS change log
 
+## 2026-10-17 — v0.9.2 convolution levels fixed (no more saturation); sweep no longer preselects a deconvolution
+
+- Choosing "sinus glissant (sweep)" no longer preselects the METIS-sweep deconvolution; the default stays "Aucune" (Luna's request).
+- **Saturation, measured** (OfflineAudioContext in headless Chrome, the real `buildChain`, the 3 provided samples at −1 dBFS peak,
+  IRs normalised to −1 dBFS: mono RT 1.1 s, stereo and FOA AmbiX RT 1.2 s): output peaks were **+6 to +34 dBFS**, with up to 160 000 clipped samples.
+  Cause: the convolvers run with `normalize = false`, so the IR's whole energy is added at unity gain.
+- **Fix** (`scripts/audio.js`):
+  1. `irGain()`: input gain = 10^(−6/20) / √(energy of the reference channel) (W for FOA, ×2 for FuMa W; the louder of the first two channels
+     otherwise), with the same factor on all channels;
+  2. +6 dB FOA make-up (the 8-speaker binaural decode measured 5.8–6.6 dB quieter);
+  3. `DynamicsCompressor` limiter (−6 dB threshold, ratio 20, 2 ms attack) placed **after** the volume slider;
+  4. a final soft clipper (WaveShaper, linear below 0.8, tanh rounding, ≤ 0.95).
+  `buildChain` accepts an optional context (for offline tests).
+- **After** (same measurement): no clipped sample in any of the 9 IR × sample cases, at volume 1.0 or at the slider maximum 1.5.
+  Pluck ≈ −6 dBFS, claps ≈ −14 dBFS, sweep ≈ −0.6 dBFS. Mono, stereo and FOA agree within ≈ 1 dB.
+  Mistake along the way: the first soft-clip curve assumed an input range of ±2, but WaveShaper curves span −1…+1, so it doubled quiet signals
+  (+6 dB, clipping everywhere). The measurement caught it, and it was fixed.
+- The full UI walkthrough still passes (Acoustique and CAVERN play; analysis unchanged).
+- Not tested: real devices' output stages; real measured IRs with strong low-frequency modes (the limiter handles them, but untested).
+
 ## 2026-10-17 — v0.9 IR processing at upload (normalise, align, trim, sweep deconvolution)
 
 Luna asked for advanced IR options: normalise, align (remove pre-delay), deconvolve a sweep, etc.
