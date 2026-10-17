@@ -177,6 +177,11 @@
     .player-row .check { display: flex; gap: .35rem; align-items: center; margin: 0 !important; color: var(--fg); }
     .player .play { background: var(--scale); color: #0d0e12; font-weight: 600; }
     .status { color: var(--muted); font-size: .8rem; min-height: 1em; margin: .4rem 0 0; }
+    .filecheck { background: var(--surface-2); border-radius: var(--r-sm); padding: .6rem .8rem; margin-top: .4rem; }
+    .filecheck p { margin: .2rem 0; font-size: .85rem; } .filecheck .ok { color: #8fe3b0; }
+    .filecheck .warn { color: #ffb4c8; } .filecheck button { margin-top: .4rem; }
+    .limits-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+    .chars { text-align: right; margin-top: -.4rem; }
     .confirm-msg { font-size: 1rem; line-height: 1.5; margin: .2rem 0 1rem; }
     #confirm { width: min(420px, calc(100% - 2 * var(--gutter))); }
 

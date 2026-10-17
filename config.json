@@ -100,9 +100,16 @@
       }
     ]
   },
-  "upload": {
-    "photoMaxPx": 2560,
-    "panoMaxW": 5760,
-    "maxVideoMB": 100
+  "limits": {
+    "photoMaxMB": 2,
+    "panoMaxMB": 6,
+    "soundMaxMB": 10,
+    "maxSoundSec": 300,
+    "textMax": 1000,
+    "perPlace": {
+      "images": 3,
+      "sounds": 3,
+      "texts": 5
+    }
   }
 }

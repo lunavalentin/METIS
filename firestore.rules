@@ -12,6 +12,8 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/projects/$(pid)).data.get('public', false) == true;
     }
     function canRead(pid) { return signedIn() || projectPublic(pid); }
+    // Text blocks are capped at 1 000 characters (the UI enforces the same limit).
+    function textOk(d) { return !('meta' in d) || !('text' in d.meta) || d.meta.text.size() <= 1000; }
     function onlyChanges(fields) { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields); }
 
     match /projects/{pid} {
@@ -35,8 +37,10 @@ service cloud.firestore {
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.name is string && request.resource.data.name.size() <= 80;
         // Anyone signed in may append to the media-type summary; the owner/staff may edit the rest.
+        // Per-place upload limits ("limits") can only be changed by admins.
         allow update: if signedIn() && (onlyChanges(['types'])
-          || resource.data.createdBy == request.auth.uid || isStaff());
+          || ((resource.data.createdBy == request.auth.uid || isStaff())
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['limits']) || isAdmin())));
         allow delete: if isStaff() || (signedIn() && resource.data.createdBy == request.auth.uid);
 
         match /items/{iid} {
@@ -44,10 +48,11 @@ service cloud.firestore {
           allow create: if signedIn()
             && request.resource.data.author.uid == request.auth.uid
             && request.resource.data.hidden == false
-            && request.resource.data.type in ['photo', 'video', 'pano', 'ir', 'audio', 'text'];
-          allow update: if isStaff()
+            && request.resource.data.type in ['photo', 'video', 'pano', 'ir', 'audio', 'text']
+            && textOk(request.resource.data);
+          allow update: if textOk(request.resource.data) && (isStaff()
             || (signedIn() && resource.data.author.uid == request.auth.uid
-                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hidden', 'hiddenBy', 'author']));
+                && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hidden', 'hiddenBy', 'author'])));
           allow delete: if isStaff() || (signedIn() && resource.data.author.uid == request.auth.uid);
         }
       }

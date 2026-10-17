@@ -5,6 +5,7 @@ import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
 import { MetisMap, TYPE_COLORS } from './map.js';
 import { uploadMedia, videoEmbed, thumbnail } from './upload.js';
+import { checkFile, fixAndCheck, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
 import { mountPlayer, mountAnalysis, stopAll, isPlaying, setOrientation, linkedPano, linkedIR } from './acoustics.js';
 
 const $ = sel => document.querySelector(sel);
@@ -20,7 +21,16 @@ const fmtDate = v => { const d = toDate(v); return d && !isNaN(d) ? d.toLocaleSt
 // Tabs: which item types each one lists. Acoustics is a tool over the IRs, not a list.
 const TABS = { info: [], gallery: ['photo', 'video', 'pano'], sounds: ['audio', 'ir'], texts: ['text'], acoustics: ['ir'] };
 const TAB_KEYS = { info: 'tabInfo', gallery: 'tabGallery', sounds: 'tabSounds', texts: 'tabTexts', acoustics: 'tabAcoustics' };
-const ACCEPT = { photo: 'image/*', pano: 'image/jpeg,image/png', video: 'video/*', audio: 'audio/*', ir: '.wav,audio/wav,audio/x-wav' };
+// Accepted uploads (see media.js for size/duration limits). Videos are links only (no file storage).
+const SOUND_ACCEPT = '.mp3,.wav,.aif,.aiff,audio/mpeg,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff';
+const ACCEPT = { photo: '.jpg,.jpeg,.png,image/jpeg,image/png', pano: '.jpg,.jpeg,.png,image/jpeg,image/png', audio: SOUND_ACCEPT, ir: SOUND_ACCEPT };
+// Limits: defaults ← config.limits ← per-place overrides (point.limits, admins only).
+const limitsFor = p => {
+  const c = state.config.limits || {};
+  return { ...DEFAULT_LIMITS, ...c, perPlace: { ...DEFAULT_LIMITS.perPlace, ...c.perPlace, ...(p?.limits || {}) } };
+};
+const groupCount = g => state.items.filter(it => GROUP[it.type] === g).length;
+const fmtDur = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 const ITEM_TYPES = ['photo', 'pano', 'video', 'audio', 'ir', 'text'];
 const IR_FORMATS = ['mono', 'stereo', 'binaural', 'foa-ambix', 'foa-fuma'];
 const IR_METHODS = ['clap', 'balloon', 'sweep', 'other'];
@@ -213,8 +223,8 @@ async function showCharter() {
 }
 
 // ---------- places ----------
-const metaField = (k, value = '', area = true) =>
-  `<label>${t('f_' + k)}${area ? `<textarea name="${k}" rows="2">${esc(value)}</textarea>` : `<input name="${k}" value="${esc(value)}">`}</label>`;
+const metaField = (k, value = '', area = true, max = 1000) =>
+  `<label>${t('f_' + k)}${area ? `<textarea name="${k}" rows="2" maxlength="${max}">${esc(value)}</textarea>` : `<input name="${k}" maxlength="200" value="${esc(value)}">`}</label>`;
 const readTags = fd => String(fd.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean);
 
 function createPointAt(coords) {
@@ -250,6 +260,8 @@ function editPlace() {
     <label>${t('floor')}<select name="floor">${floors}</select></label>
     ${PLACE_META.map(k => metaField(k, m[k])).join('')}
     ${metaField('tags', (m.tags || []).join(', '), false)}
+    ${isAdmin(state.user) ? `<h3 class="section-title">${t('lim_placeLimits')}</h3>
+    <div class="limits-row">${['images', 'sounds', 'texts'].map(g => `<label>${t('lim_' + g)}<input type="number" min="0" max="50" name="lim_${g}" value="${limitsFor(p).perPlace[g]}"></label>`).join('')}</div>` : ''}
     <div class="row-actions">
       <button type="button" data-move>${t('movePlace')}</button>
       <button type="button" data-delete class="danger">${t('deletePlace')}</button>
@@ -259,7 +271,9 @@ function editPlace() {
     async fd => {
       const meta = { ...m, tags: readTags(fd) };
       for (const k of PLACE_META) meta[k] = fd.get(k) || '';
-      await state.backend.updatePoint(p.id, { name: fd.get('name').trim(), floor: fd.get('floor'), meta });
+      const patch = { name: fd.get('name').trim(), floor: fd.get('floor'), meta };
+      if (isAdmin(state.user)) patch.limits = Object.fromEntries(['images', 'sounds', 'texts'].map(g => [g, Math.max(0, Number(fd.get('lim_' + g)) || 0)]));
+      await state.backend.updatePoint(p.id, patch);
     });
   form.querySelector('[data-move]').onclick = () => {
     $('#dialog').close();
@@ -442,15 +456,21 @@ function showItemForm(type, existing = null) {
   const panos = items.filter(x => x.type === 'pano'), irs = items.filter(x => x.type === 'ir');
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
   const local = v => { const d = toDate(v); return d ? new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 16) : now; };
-  const opts = ITEM_TYPES.map(k => `<option value="${k}" ${k === type ? 'selected' : ''}>${t('type_' + k)}</option>`).join('');
+  const L = limitsFor(state.point);
+  const isFull = k => !editing && GROUP[k] && groupCount(GROUP[k]) >= L.perPlace[GROUP[k]];
+  if (!editing && ITEM_TYPES.every(isFull)) { confirmDialog(t('lim_allFull'), t('close')); return; }
+  if (isFull(type)) type = ITEM_TYPES.find(k => !isFull(k));
+  const opts = ITEM_TYPES.map(k => `<option value="${k}" ${k === type ? 'selected' : ''} ${isFull(k) ? 'disabled' : ''}>${t('type_' + k)}${isFull(k) ? ` (${t('lim_full')})` : ''}</option>`).join('');
+  let prepared = null; // { file, check } — the file that will be uploaded, after checks / fixes
   const sel = (name, list, cur) => `<select name="${name}">${list.map(([v, label]) => `<option value="${esc(v)}" ${v === cur ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
   const linkOpts = (list, cur) => sel('', [['', t('none')], ...list.map(x => [x.id, x.meta?.title || `${t('type_' + x.type)} · ${x.author?.displayName}`])], cur);
   const form = dialog(`
     <h2>${editing ? t('editItem') : t('addItem')}</h2>
     <label>${t('type')}<select name="type" ${editing ? 'disabled' : ''}>${opts}</select></label>
-    <div data-for="file"><label>${t('file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file"></label></div>
+    <div data-for="file"><label>${t('file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file"></label>
+      <p class="hint small limits-hint"></p><div class="filecheck" hidden></div></div>
     <div data-for="video"><label>${t('videoLink')}<input name="videoLink" type="url" value="${esc(existing?.videoLink || '')}"></label></div>
-    <div data-for="text">${metaField('text', m.text)}</div>
+    <div data-for="text">${metaField('text', m.text, true, L.textMax)}<p class="hint small chars"></p></div>
     <div data-for="ir">
       <label>${t('f_irFormat')}${sel('irFormat', IR_FORMATS.map(f => [f, f]), ir.format)}</label>
       <label>${t('f_irMethod')}${sel('irMethod', IR_METHODS.map(f => [f, t('method_' + f)]), ir.method)}</label>
@@ -474,12 +494,16 @@ function showItemForm(type, existing = null) {
       const meta = { ...m, tags: readTags(fd), capturedAt: fd.get('capturedAt') ? new Date(fd.get('capturedAt')).toISOString() : null };
       for (const k of ['title', ...META_TEXT, 'credit', 'text', 'device']) meta[k] = fd.get(k) || '';
       const item = { meta };
-      const file = fd.get('file'), link = String(fd.get('videoLink') || '').trim(), hasFile = file && file.size;
-      if (ty === 'video' && link && !hasFile) { item.videoLink = link; if (!editing) item.media = null; }
-      else if (ty !== 'text' && (hasFile || !editing)) {
+      const link = String(fd.get('videoLink') || '').trim(), hasFile = !!prepared;
+      if (ty === 'text' && (meta.text || '').length > L.textMax) throw new Error(t('chars').replace('{n}', meta.text.length).replace('{max}', L.textMax));
+      if (ty === 'video') {
+        if (!videoEmbed(link)) throw new Error(t('videoLinkInvalid'));
+        item.videoLink = link; if (!editing) item.media = null;
+      } else if (ty !== 'text' && (hasFile || !editing)) {
         if (!hasFile) throw new Error(t('file') + ' ?');
+        if (!prepared.check.ok) throw new Error(t('lim_fixFirst'));
         const bar = f.querySelector('progress'); bar.hidden = false;
-        item.media = await uploadMedia(state.config, ty, file, p => (bar.value = p));
+        item.media = await uploadMedia(state.config, ty, prepared.file, p => (bar.value = p));
       }
       if (ty === 'ir') {
         item.irInfo = { format: fd.get('irFormat'), method: fd.get('irMethod'), raw: fd.get('irRaw') === 'on',
@@ -491,11 +515,45 @@ function showItemForm(type, existing = null) {
       else await state.backend.addItem(state.point.id, { type: ty, ...item });
     });
 
+  const box = form.querySelector('.filecheck');
+  const curType = () => (editing ? existing.type : form.elements.type.value);
+  const fill = (key, info = {}) => t(key).replace('{size}', fmtMB(info.size || 0)).replace('{max}', fmtMB(info.max || 0)).replace('{dur}', fmtDur(info.dur || 0));
+  const showCheck = () => {
+    box.hidden = !prepared;
+    if (!prepared) return;
+    const { file, check } = prepared;
+    if (check.ok) { box.innerHTML = `<p class="ok">✓ ${esc(file.name)} · ${fmtMB(file.size)}${check.info?.dur ? ` · ${fmtDur(check.info.dur)}` : ''}</p>`; return; }
+    box.innerHTML = check.problems.map(k => `<p class="warn">${esc(fill(k, check.info))}</p>`).join('') +
+      check.fixes.map((fx, i) => `<button type="button" class="grad" data-fix="${i}">${t(fx.key)}</button>`).join('');
+    box.querySelectorAll('[data-fix]').forEach(b => (b.onclick = async () => {
+      b.disabled = true; b.textContent = t('fixing');
+      try { prepared = await fixAndCheck(curType(), check.fixes[Number(b.dataset.fix)], L); }
+      catch (e) { console.warn(e); box.insertAdjacentHTML('beforeend', `<p class="warn">${esc(t('audioError'))} (${esc(e.message)})</p>`); }
+      showCheck();
+    }));
+  };
+  form.elements.file.addEventListener('change', async () => {
+    const file = form.elements.file.files[0];
+    prepared = null; showCheck();
+    if (!file) return;
+    box.hidden = false; box.innerHTML = `<p class="hint small">${t('checking')}</p>`;
+    prepared = { file, check: await checkFile(curType(), file, L) };
+    showCheck();
+  });
+  const chars = form.querySelector('.chars'), textEl = form.elements.text;
+  const countChars = () => (chars.textContent = t('chars').replace('{n}', textEl.value.length).replace('{max}', L.textMax));
+  textEl.addEventListener('input', countChars); countChars();
   const sync = () => {
-    const ty = editing ? existing.type : form.elements.type.value;
-    const show = { file: ty !== 'text', video: ty === 'video', text: ty === 'text', ir: ty === 'ir', panoLink: ty === 'pano', rot: ty === 'ir' || ty === 'pano', device: ty === 'audio' || ty === 'ir' };
+    const ty = curType();
+    const show = { file: !['text', 'video'].includes(ty), video: ty === 'video', text: ty === 'text', ir: ty === 'ir', panoLink: ty === 'pano', rot: ty === 'ir' || ty === 'pano', device: ty === 'audio' || ty === 'ir' };
     form.querySelectorAll('[data-for]').forEach(el => (el.hidden = !show[el.dataset.for]));
     if (ACCEPT[ty]) form.elements.file.accept = ACCEPT[ty];
+    const g = GROUP[ty];
+    form.querySelector('.limits-hint').textContent = ['photo', 'pano'].includes(ty)
+      ? t('lim_hintImage').replace('{max}', ty === 'pano' ? L.panoMaxMB : L.photoMaxMB)
+      : ['audio', 'ir'].includes(ty) ? t('lim_hintSound').replace('{max}', L.soundMaxMB) : '';
+    if (g && !editing) form.querySelector('.limits-hint').textContent += ' ' + t('lim_count').replace('{n}', groupCount(g)).replace('{max}', L.perPlace[g]);
+    if (prepared) { prepared = null; form.elements.file.value = ''; showCheck(); }
   };
   form.elements.type.addEventListener('change', sync); sync();
 }

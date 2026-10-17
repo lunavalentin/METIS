@@ -1,5 +1,34 @@
 # METIS change log
 
+## 2026-10-17 — v0.6 bounded uploads (Cloudinary kept)
+
+Luna considered Firebase Storage, but it needs the Blaze plan and a card, which cannot be hard-capped. After comparing the
+options she chose to stay on Cloudinary's free plan (no card, no billing risk) and asked for strict limits.
+
+**Limits** (`config.limits`; defaults in `scripts/media.js`):
+- **Images**: JPEG/PNG only; photo ≤ 2 MB, 360° ≤ 6 MB. If bigger → warning + **Compress** (canvas → JPEG, longest side 2560 / 5760 px,
+  quality stepped 0.88 → 0.55 until under the limit).
+- **Sounds**: MP3/WAV/AIFF only; ≤ 5 min and ≤ 10 MB. Too long → **Keep the first 5 minutes and convert**; too big →
+  **Convert** (recordings → MP3 128 kbps stereo / 96 mono via lamejs 1.2.1 from cdnjs; IRs → 16-bit WAV, keeping every channel).
+  **AIFF** is always converted to WAV (lossless; own AIFF/AIFF-C parser), because Chrome cannot decode AIFF.
+- **Texts**: 1 000 characters (textarea maxlength + counter; also enforced in `firestore.rules` → `textOk()`).
+  Other metadata fields: 1 000 (textareas) / 200 (single-line).
+- **Per place**: 3 images (photo + 360°), 3 sounds (recording + IR), 5 texts. Full types are disabled in the form;
+  **admins** can raise the limits per place in "Modifier le lieu" (`point.limits`; a rule now allows only admins to change it).
+- **Video**: links only (YouTube/Vimeo, validated); no video files. Automatic resizing in `upload.js` was removed
+  (compression is now explicit, as requested).
+
+**Tests**
+- Conversions (headless Chrome, `limtest.html` in the scratchpad):
+  - 34 MB PNG photo → 1.70 MB JPEG 2560×1920; as a 360° → 5.42 MB JPEG; BMP refused; small JPEG accepted unchanged.
+  - 6-min stereo WAV (66 MB) → 4.57 MB MP3, 4:59.8. **Bug found and fixed**: MP3 padding made a file trimmed to exactly 5:00
+    fail the re-check; it now trims to 4:59.75 with a 0.5 s tolerance.
+  - 11 MB 24-bit 4-channel IR → 7.32 MB 16-bit WAV, still 4 channels.
+  - 16-bit stereo and 24-bit mono AIFF → WAV, decoded correctly.
+- Form (mock backend): at 3 images, photo/360° are disabled; text capped at 1 000; a bad video link is refused;
+  admin raises images to 4 → stored, and photo/360° are enabled again. No errors.
+- **Not tested**: a real Cloudinary upload (account pending); MP3 encoding speed on phones.
+
 ## 2026-10-17 — v0.5 admin settings: file storage + visibility
 
 - **Settings dialog** (gear icon, admins only):
