@@ -1,5 +1,14 @@
 # METIS change log
 
+## 2026-10-17 — v0.7.1 cleanup verified live
+
+- First dry run failed: Cloudinary answered "unknown api_key". Added a diagnostic that describes the shape of rejected credentials
+  (never their value): it showed 10-character non-numeric values instead of the 15-digit key / ~27-character secret. Luna re-entered them.
+- Dry run: 1 place, 3 files in use, 20 stored, 17 orphaned (4 younger than 1 h). The 13 listed were all test files from earlier checks.
+- The "Nettoyer maintenant" button first failed with GitHub 403 (token had Actions: Read-only); fixed with Actions: Read and write.
+- **Live run from the button** (trigger "admin: Luna"): 13 deleted, 1.4 MB freed. Two of them, checked afterwards, now return 404
+  on Cloudinary. The 3 files of Luna's "Imaginary Place" were kept. The remaining 4 recent orphans go in the next nightly run.
+
 ## 2026-10-17 — v0.7 Cloudinary cleanup (deleted files really removed)
 
 **Problem verified on the live services**: deleting a file or a place on the site removed the Firestore document, but the file stayed on
