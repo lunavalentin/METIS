@@ -20,6 +20,8 @@ const fmtDate = v => { const d = toDate(v); return d && !isNaN(d) ? d.toLocaleSt
 
 // Tabs: which item types each one lists. Acoustics is a tool over the IRs, not a list.
 const TABS = { info: [], gallery: ['photo', 'video', 'pano'], sounds: ['audio', 'ir'], texts: ['text'], acoustics: ['ir'] };
+// Add buttons per tab (Infos and Acoustique have none; Acoustique offers "+ IR" in its empty state).
+const TAB_ADD = { gallery: ['photo', 'pano', 'video'], sounds: ['audio', 'ir'], texts: ['text'] };
 const TAB_KEYS = { info: 'tabInfo', gallery: 'tabGallery', sounds: 'tabSounds', texts: 'tabTexts', acoustics: 'tabAcoustics' };
 // Accepted uploads (see media.js for size/duration limits). Videos are links only (no file storage).
 const SOUND_ACCEPT = '.mp3,.wav,.aif,.aiff,audio/mpeg,audio/wav,audio/x-wav,audio/aiff,audio/x-aiff';
@@ -359,16 +361,23 @@ function renderPanel() {
       <button class="close icon" aria-label="${esc(t('close'))}" title="${esc(t('close'))}"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </header>
     <nav class="tabs">${tabsHTML()}</nav>
-    ${canAdd && state.tab !== 'acoustics' ? `<button class="add-item">+ ${t('addItem')}</button>` : ''}
+    ${canAdd && TAB_ADD[state.tab] ? addButtons(TAB_ADD[state.tab]) : ''}
     <section class="tab-body">${body}</section>`;
 
   $('#panel .close').onclick = closePoint;
   wireTabs();
-  const defaultType = { gallery: 'photo', sounds: 'audio', texts: 'text' }[state.tab] || 'photo';
-  $('#panel .add-item')?.addEventListener('click', () => showItemForm(defaultType));
+  $('#panel').querySelectorAll('[data-add]').forEach(b => (b.onclick = () => showItemForm(b.dataset.add, null, { lockType: true })));
   $('#panel [data-edit-place]')?.addEventListener('click', editPlace);
   $('#panel').querySelectorAll('[data-act]').forEach(b => (b.onclick = () => itemAction(b.dataset.act, b.dataset.id)));
   if (state.tab === 'acoustics') renderAcoustics($('#panel .acoustics'), items);
+}
+
+function addButtons(types) {
+  const L = limitsFor(state.point);
+  return `<div class="add-row">${types.map(ty => {
+    const g = GROUP[ty], n = g ? groupCount(g) : 0, max = g ? L.perPlace[g] : null, full = g && n >= max;
+    return `<button class="add-item" data-add="${ty}" ${full ? 'disabled' : ''} style="--c:${TYPE_COLORS[ty]}">+ ${t(ty === 'video' ? 'addVideoLink' : 'type_' + ty)}${g ? ` <small>${full ? t('lim_full') : `${n}/${max}`}</small>` : ''}</button>`;
+  }).join('')}</div>`;
 }
 
 function infoTab(items) {
@@ -451,8 +460,9 @@ async function itemAction(act, id) {
 }
 
 // ---------- add / edit item ----------
-function showItemForm(type, existing = null) {
+function showItemForm(type, existing = null, { lockType = false } = {}) {
   const editing = !!existing;
+  const locked = editing || lockType;
   const m = existing?.meta || {}, ir = existing?.irInfo || {};
   const items = visibleItems();
   const panos = items.filter(x => x.type === 'pano'), irs = items.filter(x => x.type === 'ir');
@@ -468,7 +478,7 @@ function showItemForm(type, existing = null) {
   const linkOpts = (list, cur) => sel('', [['', t('none')], ...list.map(x => [x.id, x.meta?.title || `${t('type_' + x.type)} · ${x.author?.displayName}`])], cur);
   const form = dialog(`
     <h2>${editing ? t('editItem') : t('addItem')}</h2>
-    <label>${t('type')}<select name="type" ${editing ? 'disabled' : ''}>${opts}</select></label>
+    <label>${t('type')}<select name="type" ${locked ? 'disabled' : ''}>${opts}</select></label>
     <div data-for="file"><label>${t('file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file"></label>
       <p class="hint small limits-hint"></p><div class="filecheck" hidden></div></div>
     <div data-for="video"><label>${t('videoLink')}<input name="videoLink" type="url" value="${esc(existing?.videoLink || '')}"></label></div>
@@ -492,7 +502,7 @@ function showItemForm(type, existing = null) {
     <p class="err"></p>
     <menu><button type="button" data-cancel>${t('cancel')}</button><button>${t('save')}</button></menu>`,
     async (fd, f) => {
-      const ty = editing ? existing.type : fd.get('type');
+      const ty = editing ? existing.type : form.elements.type.value;
       const meta = { ...m, tags: readTags(fd), capturedAt: fd.get('capturedAt') ? new Date(fd.get('capturedAt')).toISOString() : null };
       for (const k of ['title', ...META_TEXT, 'credit', 'text', 'device']) meta[k] = fd.get(k) || '';
       const item = { meta };
@@ -519,6 +529,7 @@ function showItemForm(type, existing = null) {
 
   const box = form.querySelector('.filecheck');
   const curType = () => (editing ? existing.type : form.elements.type.value);
+  if (!editing && lockType) form.elements.type.value = type;
   const fill = (key, info = {}) => t(key).replace('{size}', fmtMB(info.size || 0)).replace('{max}', fmtMB(info.max || 0)).replace('{dur}', fmtDur(info.dur || 0));
   const showCheck = () => {
     box.hidden = !prepared;

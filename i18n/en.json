@@ -155,5 +155,6 @@
   "adminOverridden": "limit lifted by an admin",
   "lim_adminTooBig": "Even for admins, the maximum is {max} per file.",
   "lim_adminHint": "Admin: you can upload heavier or longer files, up to {max} MB.",
-  "networkError": "Connection dropped during upload (3 attempts). Check the network and try again."
+  "networkError": "Connection dropped during upload (3 attempts). Check the network and try again.",
+  "addVideoLink": "Video (link)"
 }

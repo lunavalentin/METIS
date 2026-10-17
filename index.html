@@ -123,9 +123,12 @@
     .tabs button.on::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 2px; height: 2px; border-radius: 2px; background: var(--scale); }
     .count { font-size: .7rem; font-weight: 600; min-width: 1.4em; padding: 0 .4em; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
 
-    .add-item { width: 100%; margin-bottom: .9rem; padding: .8em; border-radius: var(--r); background: transparent;
-      border: 1.5px dashed var(--line); color: var(--muted); }
-    .add-item:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+    .add-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .9rem; }
+    .add-item { flex: 1 1 0; min-width: 7.5rem; padding: .7em .6em; border-radius: var(--r); background: transparent;
+      border: 1.5px dashed color-mix(in srgb, var(--c, var(--line)) 55%, transparent); color: var(--fg); font-size: .82rem; }
+    .add-item small { color: var(--muted); margin-left: .25em; font-weight: 500; }
+    .add-item:hover:not(:disabled) { border-color: var(--c, var(--accent)); background: color-mix(in srgb, var(--c, var(--accent)) 12%, transparent); }
+    .add-item:disabled { opacity: .45; cursor: not-allowed; }
 
     .item { background: var(--surface-solid); border: 1px solid var(--line); border-left: 3px solid var(--c, var(--line)); border-radius: var(--r); padding: .65rem; margin-bottom: .75rem; }
     .item.is-hidden { opacity: .55; border-style: dashed; }
@@ -166,6 +169,7 @@
     .type-chip.small { font-size: .7rem; padding: .1em .55em .1em .4em; }
     .item-head { display: flex; flex-direction: column; gap: .2rem; margin: .6rem .2rem .1rem; }
     .item-head h3 { margin: 0 !important; }
+    .item-head .type-chip { align-self: flex-start; }
     .pano-thumb { position: relative; display: block; width: 100%; padding: 0; border-radius: var(--r-sm); overflow: hidden; background: none; }
     .pano-thumb img { aspect-ratio: 2 / 1 !important; }
     .pano-thumb .badge { position: absolute; top: .5rem; left: .5rem; padding: .15em .6em; border-radius: 999px; font-size: .72rem; font-weight: 700;

@@ -1,5 +1,15 @@
 # METIS change log
 
+## 2026-10-17 — v0.6.4 add buttons per tab
+
+- No add button on Infos any more. Galerie shows "+ Photo", "+ Image 360°" and "+ Vidéo (lien)"; Sons shows "+ Enregistrement audio"
+  and "+ Réponse impulsionnelle"; Textes shows "+ Texte". Each shows n/max and is disabled at its limit ("limite atteinte").
+  Video links have no limit. A button opens the form with the type fixed. Before, a single "add" button pre-selected the
+  first type that was not full, so video only appeared once the images were full.
+- Type badge on cards no longer stretches across the card.
+- Checked in headless Chrome (mock): buttons per tab, counts and disabled states, the "+ Vidéo (lien)" form (type locked,
+  no file field), saving a YouTube link. No errors.
+
 ## 2026-10-17 — v0.6.3 image form without the place questions
 
 - Photo and 360° uploads no longer ask the place-level questions ("Qui utilise cet espace ?", "Usage prévu", "Usages non prévus
