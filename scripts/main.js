@@ -1,5 +1,6 @@
 // METIS — UI glue: boot, login/logout + charter, places (add / edit / move / delete), place panel with tabs
-// (Info · Gallery · Sounds · Texts · Acoustics), item form (add / edit, CAVIAR links), full-screen 360° / CAVIAR viewer.
+// (Info · Gallery · Sounds · Texts · Acoustics), item form (add / edit, CAVERN links), full-screen 360° / CAVERN viewer
+// (CAVERN = 360° photo + convolution with the linked IR, as in the CAVERN template).
 import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
 import { MetisMap, TYPE_COLORS } from './map.js';
@@ -361,7 +362,7 @@ function actions(it) {
   const btns = [];
   if (it.type === 'pano') {
     btns.push(`<button data-act="expand" data-id="${it.id}">${t('expand')}</button>`);
-    if (linkedIR(it, visibleItems())) btns.push(`<button data-act="caviar" data-id="${it.id}" class="grad">${t('openCaviar')}</button>`);
+    if (linkedIR(it, visibleItems())) btns.push(`<button data-act="cavern" data-id="${it.id}" class="grad">${t('openCavern')}</button>`);
   }
   if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="grad">${t('listenHere')}</button>`);
   if (u && !state.backend.readOnly) {
@@ -398,7 +399,7 @@ async function itemAction(act, id) {
   if (act === 'unhide') await state.backend.setHidden(pid, id, false);
   if (act === 'edit') showItemForm(it.type, it);
   if (act === 'expand') openViewer(it);
-  if (act === 'caviar') openViewer(it, linkedIR(it, visibleItems()));
+  if (act === 'cavern') openViewer(it, linkedIR(it, visibleItems()));
   if (act === 'listen') { state.acousticsIR = id; state.tab = 'acoustics'; renderPanel(); }
 }
 
@@ -483,23 +484,23 @@ function renderAcoustics(el, items) {
     <div class="aur">
       <label>${t('chooseIR')}<select class="ir-pick">${irs.map(it => `<option value="${it.id}" ${it.id === cur.id ? 'selected' : ''}>${esc(it.meta?.title || it.author?.displayName)} · ${esc(it.irInfo?.format)}</option>`).join('')}</select></label>
       <p class="ir-meta">${t('by')} ${esc(cur.author?.displayName)}${cur.irInfo?.method ? ` · ${esc(t('method_' + cur.irInfo.method))}` : ''}${cur.irInfo?.receiver ? ` · ${esc(cur.irInfo.receiver)}` : ''}</p>
-      ${pano ? `<button class="wide grad open-caviar">${t('openCaviar')}</button><p class="hint small">${t('caviarAvailable')}</p>` : ''}
+      ${pano ? `<button class="wide grad open-cavern">${t('openCavern')}</button><p class="hint small">${t('cavernAvailable')}</p>` : ''}
       <div class="player"></div>
     </div>
     <div class="analysis"></div>`;
   el.querySelector('.ir-pick').onchange = e => { stopAll(); state.acousticsIR = e.target.value; renderPanel(); };
-  el.querySelector('.open-caviar')?.addEventListener('click', () => { stopAll(); openViewer(pano, cur); });
+  el.querySelector('.open-cavern')?.addEventListener('click', () => { stopAll(); openViewer(pano, cur); });
   mountPlayer(el.querySelector('.player'), cur, { samples: state.config.audio.samples, recordings: items.filter(it => it.type === 'audio'), t, tr, esc });
   mountAnalysis(el.querySelector('.analysis'), cur, t);
 }
 
-// ---------- full-screen 360° / CAVIAR viewer ----------
+// ---------- full-screen 360° / CAVERN viewer ----------
 function openViewer(pano, ir = null) {
   closeViewer();
   const v = $('#viewer');
   v.innerHTML = `
     <div class="viewer-bar">
-      <div><p class="kicker">${ir ? 'CAVIAR · ' + esc(t('caviarHint')) : '360°'}</p><h2>${esc(pano.meta?.title || t('untitled'))}</h2></div>
+      <div><p class="kicker">${ir ? 'CAVERN · ' + esc(t('cavernHint')) : '360°'}</p><h2>${esc(pano.meta?.title || t('untitled'))}</h2></div>
       <button class="icon close" aria-label="${esc(t('close'))}" title="${esc(t('close'))}"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
     </div>
     <div id="viewer-pano"></div>

@@ -83,11 +83,8 @@
   "untitled": "Untitled",
   "fileKept": "leave empty to keep the current file",
   "none": "— none —",
-  "f_linkPano": "Linked 360° photo (CAVIAR)",
-  "f_linkIR": "Linked impulse response (CAVIAR)",
-  "openCaviar": "Listen in the space · CAVIAR",
-  "caviarHint": "turn the view, the sound follows your gaze",
-  "caviarAvailable": "This impulse response is linked to a 360° photo: open it for immersive listening.",
+  "f_linkPano": "Linked 360° photo (CAVERN)",
+  "f_linkIR": "Linked impulse response (CAVERN)",
   "listenHere": "Listen to this acoustics",
   "noIR": "No impulse response here yet. Add one to listen to the acoustics of this place.",
   "srcSamples": "Provided samples",
@@ -114,5 +111,8 @@
   "alignRotation": "Rotation",
   "alignWidth": "Width",
   "alignOpacity": "Opacity",
-  "alignCopy": "Copy JSON"
+  "alignCopy": "Copy JSON",
+  "openCavern": "Listen in the space · CAVERN",
+  "cavernHint": "turn the view, the sound follows your gaze",
+  "cavernAvailable": "This impulse response is linked to a 360° photo: open it for immersive listening."
 }

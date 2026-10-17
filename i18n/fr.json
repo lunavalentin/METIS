@@ -83,11 +83,8 @@
   "untitled": "Sans titre",
   "fileKept": "laisser vide pour garder le fichier actuel",
   "none": "— aucune —",
-  "f_linkPano": "Photo 360° liée (CAVIAR)",
-  "f_linkIR": "Réponse impulsionnelle liée (CAVIAR)",
-  "openCaviar": "Écouter dans l'espace · CAVIAR",
-  "caviarHint": "tournez la vue, le son suit votre regard",
-  "caviarAvailable": "Cette réponse impulsionnelle est liée à une photo 360° : ouvrez-la pour une écoute immersive.",
+  "f_linkPano": "Photo 360° liée (CAVERN)",
+  "f_linkIR": "Réponse impulsionnelle liée (CAVERN)",
   "listenHere": "Écouter cette acoustique",
   "noIR": "Aucune réponse impulsionnelle ici pour l'instant. Ajoutez-en une pour écouter l'acoustique de ce lieu.",
   "srcSamples": "Échantillons fournis",
@@ -114,5 +111,8 @@
   "alignRotation": "Rotation",
   "alignWidth": "Largeur",
   "alignOpacity": "Opacité",
-  "alignCopy": "Copier le JSON"
+  "alignCopy": "Copier le JSON",
+  "openCavern": "Écouter dans l'espace · CAVERN",
+  "cavernHint": "tournez la vue, le son suit votre regard",
+  "cavernAvailable": "Cette réponse impulsionnelle est liée à une photo 360° : ouvrez-la pour une écoute immersive."
 }

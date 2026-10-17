@@ -90,7 +90,7 @@ projects/{pid}/points/{ptid}/items/{iid}
   media {url, publicId, resourceType, thumbUrl, bytes, width, height, duration} | videoLink
   meta  {…see §5}
   irInfo {format, channels, sampleRate, order, norm, source, receiver, method, rotationDeg}
-  linkedPano (on an IR) | linkedIR (on a 360°)   # CAVIAR pair, settable from either side
+  linkedPano (on an IR) | linkedIR (on a 360°)   # CAVERN pair, settable from either side
   author {uid, displayName}, createdAt, hidden, hiddenBy
 
 users/{uid}

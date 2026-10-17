@@ -1,5 +1,12 @@
 # METIS change log
 
+## 2026-10-17 — v0.4.2 CAVIAR → CAVERN (naming correction)
+
+Luna meant **CAVERN** (her CAVERN template: 360° photo + IR convolution), not CAVIAR. The behaviour is unchanged.
+Renamed the UI strings (FR/EN), the i18n keys (`openCavern`, `cavernHint`, `cavernAvailable`), the action `data-act="cavern"`,
+the code comments and the SPEC. The earlier v0.4 entry still describes the "CAVIAR" assumption, which is now resolved.
+Re-ran the UI walkthrough: it passes with no errors.
+
 ## 2026-10-17 — v0.4.1 blue → purple → pink scale
 
 Luna preferred a blue–purple–pink scale to the rainbow.

@@ -1,6 +1,6 @@
 // Acoustics: CAVERN-style listening through an uploaded IR — a provided dry sample, a recording made at the place,
 // the visitor's own file (decoded locally, never uploaded) or their live voice. Shared by the Acoustics tab and the
-// CAVIAR view (360° photo + linked IR, head rotation follows the viewer).
+// CAVERN view (360° photo + convolution with the linked IR, head rotation follows the viewer, as in the CAVERN template).
 import { Auraliser, loadBuffer, audioContext } from './audio.js';
 import { analyseIR, cleanImpulse } from './irAnalysis.js';
 
