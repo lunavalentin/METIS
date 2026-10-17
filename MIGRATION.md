@@ -32,7 +32,8 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
       - place/align each plan on the map (drag, rotate, scale, opacity; replaces the `?align=` tool);
       - set the project's home view (centre, zoom), samples, charter text, limits.
       Everything saved in the project config, editable later from the same module.
-- [ ] 6. Account generation: number of students / instructors in the form/JSON → accounts created from the admin's browser
+- [x] 6. Account generation (**18/18 live checks**: generate, CSV + Firebase copy, login → own project + project charter,
+      reset → new password works / old refused, delete → refused, accounts from the new-project form). Spec: number of students / instructors in the form/JSON → accounts created from the admin's browser
       (secondary Firebase session), CSV downloaded + copy in `projects/{pid}/admin/accounts`; "+ N comptes"; password reset.
 - [ ] 7. Global cleanup job (nightly, loops over projects, decrypts each project's Cloudinary keys).
 - [ ] 8. Archive mode (`status: archived`, read-only) + admin-only "Télécharger la version statique" (ZIP built in the browser).
