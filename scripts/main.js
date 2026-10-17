@@ -5,7 +5,7 @@ import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
 import { MetisMap, TYPE_COLORS } from './map.js';
 import { uploadMedia, videoEmbed, thumbnail } from './upload.js';
-import { checkFile, fixAndCheck, adminOverride, decodeSound, encodeWav, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
+import { checkFile, fixAndCheck, adminOverride, decodeSound, encodeWav, looksLikePano, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
 import { processIR, METIS_SWEEP } from './irprocess.js';
 import { analyseIR } from './irAnalysis.js';
 import { mountPlayer, mountAnalysis, stopAll, isPlaying, setOrientation, linkedPano, linkedIR } from './acoustics.js';
@@ -510,8 +510,8 @@ async function itemAction(act, id) {
 // ---------- add / edit item ----------
 // Fields shown for each type, in order ("adv:" = inside "Options avancées"). Place questions live in the Infos tab only.
 const FORM_FIELDS = {
-  photo: ['file', 'title', 'capturedAt', 'description', 'poetic', 'credit', 'tags'],
-  pano: ['file', 'title', 'capturedAt', 'description', 'poetic', 'linkIR', 'credit', 'tags', 'adv:rotation'],
+  photo: ['imageKind', 'file', 'title', 'capturedAt', 'description', 'poetic', 'credit', 'tags'],
+  pano: ['imageKind', 'file', 'title', 'capturedAt', 'description', 'poetic', 'linkIR', 'credit', 'tags', 'adv:rotation'],
   video: ['videoLink', 'title', 'capturedAt', 'description', 'credit', 'tags'],
   audio: ['file', 'title', 'capturedAt', 'description', 'poetic', 'conditions', 'device', 'credit', 'tags'],
   ir: ['file', 'title', 'capturedAt', 'irFormat', 'irMethod', 'irSource', 'irReceiver', 'linkPano', 'description', 'tags', 'adv:process', 'adv:rotation'],
@@ -519,9 +519,9 @@ const FORM_FIELDS = {
 };
 const META_KEYS = ['title', 'description', 'poetic', 'conditions', 'device', 'credit', 'text'];
 
-function showItemForm(type, existing = null) {
+function showItemForm(type, existing = null, carry = null) {
   const editing = !!existing, ty = editing ? existing.type : type;
-  const m = existing?.meta || {}, ir = existing?.irInfo || {};
+  const m = { ...(existing?.meta || {}), ...(carry?.meta || {}) }, ir = existing?.irInfo || {};
   const items = visibleItems();
   const panos = items.filter(x => x.type === 'pano'), irs = items.filter(x => x.type === 'ir');
   const now = new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 16);
@@ -533,6 +533,8 @@ function showItemForm(type, existing = null) {
   const linkSel = (name, list, cur) => sel(name, [['', t('none')], ...list.map(x => [x.id, x.meta?.title || `${t('type_' + x.type)} · ${x.author?.displayName}`])], cur || '');
   const rotValue = ty === 'ir' ? ir.rotationDeg : existing?.panoInfo?.northOffsetDeg;
   const FIELD = {
+    // Only when editing: correct a photo uploaded as the wrong kind (e.g. a 360° saved as a photo).
+    imageKind: () => (editing ? `<label>${t('imageKind')}${sel('imageKind', [['photo', t('type_photo')], ['pano', t('type_pano')]], ty)}</label>` : ''),
     file: () => `<label>${t(editing ? 'replaceFile' : 'file')}${editing ? ` <small>(${t('fileKept')})</small>` : ''}<input name="file" type="file" accept="${ACCEPT[ty] || ''}"></label>
       <p class="hint small limits-hint"></p><div class="filecheck" hidden></div>`,
     videoLink: () => `<label>${t('videoLink')}<input name="videoLink" type="url" required value="${esc(existing?.videoLink || '')}" placeholder="https://youtu.be/…"></label>`,
@@ -610,12 +612,17 @@ function showItemForm(type, existing = null) {
         if (has('linkedPano')) item.linkedPano = fd.get('linkedPano') || null;
       }
       if (ty === 'pano') { item.panoInfo = { northOffsetDeg: rot }; if (has('linkedIR')) item.linkedIR = fd.get('linkedIR') || null; }
+      if (has('imageKind') && fd.get('imageKind') !== ty) {
+        item.type = fd.get('imageKind');
+        if (item.type === 'pano') item.panoInfo = { northOffsetDeg: rot };
+        await state.backend.addPointType(state.point.id, item.type);
+      }
       if (editing) await state.backend.updateItem(state.point.id, existing.id, item);
       else await state.backend.addItem(state.point.id, { type: ty, ...item });
     });
 
   // IR processing options: extra inputs for custom / reference deconvolution (default: none, whatever the acquisition method).
-  const pDeconv = form.elements.pDeconv, method = form.elements.irMethod;
+  const pDeconv = form.elements.pDeconv;
   if (pDeconv) {
     const syncP = () => { form.querySelector('.p-custom').hidden = pDeconv.value !== 'custom'; form.querySelector('.p-ref').hidden = pDeconv.value !== 'reference'; };
     pDeconv.addEventListener('change', syncP);
@@ -688,12 +695,35 @@ function showItemForm(type, existing = null) {
       showCheck();
     }));
   };
+  // 360° detection: a photo that is 2:1 / tagged equirectangular → offer to save it as a 360°; a "360°" that is not 2:1 → warn.
+  async function panoHint(file) {
+    const r = await looksLikePano(file);
+    form.querySelector('.pano-hint')?.remove();
+    const note = Object.assign(document.createElement('div'), { className: 'pano-hint filecheck' });
+    if (ty === 'photo' && r.pano) {
+      note.innerHTML = `<p class="warn">${t(r.reason === 'xmp' ? 'panoDetectedXmp' : 'panoDetectedRatio').replace('{w}', r.w).replace('{h}', r.h)}</p>`
+        + `<button type="button" class="grad" data-to-pano>${t(editing ? 'panoSwitchEdit' : 'panoSwitch')}</button>`;
+      box.after(note);
+      note.querySelector('[data-to-pano]').onclick = () => {
+        if (editing) { form.elements.imageKind.value = 'pano'; note.remove(); return; }
+        const meta = {}; for (const k of META_KEYS) if (form.elements[k]) meta[k] = form.elements[k].value;
+        if (form.elements.tags) meta.tags = readTags(new FormData(form));
+        if (form.elements.capturedAt?.value) meta.capturedAt = new Date(form.elements.capturedAt.value).toISOString();
+        $('#dialog').close();
+        showItemForm('pano', null, { meta, file });
+      };
+    } else if (ty === 'pano' && r.w && !r.pano) {
+      note.innerHTML = `<p class="warn">${t('panoNotTwoToOne').replace('{w}', r.w).replace('{h}', r.h)}</p>`;
+      box.after(note);
+    }
+  }
   fileEl.addEventListener('change', async () => {
     const file = fileEl.files[0];
     prepared = null; showCheck();
     if (!file) return;
     box.hidden = false; box.innerHTML = `<p class="hint small">${t('checking')}</p>`;
     prepared = { file, check: await checkFile(ty, file, L) };
+    if (['photo', 'pano'].includes(ty) && prepared.check.ok !== undefined) panoHint(file);
     // IR: preselect the format from the channel count (4 → AmbiX, 2 → stereo, 1 → mono); FuMa / binaural stay a manual choice.
     const nch = prepared.check.info?.channels, fmt = form.elements.irFormat;
     if (ty === 'ir' && fmt && nch) {
@@ -705,6 +735,18 @@ function showItemForm(type, existing = null) {
     }
     showCheck();
   });
+  // Editing an existing photo whose stored size is 2:1 (Cloudinary reports width/height): suggest the switch right away.
+  const mw = existing?.media?.width, mh = existing?.media?.height;
+  if (editing && ty === 'photo' && mw && mh && Math.abs(mw / mh - 2) < 0.03 && mw >= 2000) {
+    const note = Object.assign(document.createElement('div'), { className: 'pano-hint filecheck' });
+    note.innerHTML = `<p class="warn">${t('panoDetectedRatio').replace('{w}', mw).replace('{h}', mh)}</p><button type="button" class="grad" data-to-pano>${t('panoSwitchEdit')}</button>`;
+    form.elements.imageKind.closest('label').after(note);
+    note.querySelector('[data-to-pano]').onclick = () => { form.elements.imageKind.value = 'pano'; note.remove(); };
+  }
+  if (carry?.file) {
+    const dt = new DataTransfer(); dt.items.add(carry.file);
+    fileEl.files = dt.files; fileEl.dispatchEvent(new Event('change'));
+  }
 }
 
 // ---------- acoustics tab ----------

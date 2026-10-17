@@ -19,7 +19,7 @@ async function staticBackend() {
     watchItems(pointId, cb) { cb(data.items[pointId] || []); return () => {}; },
     login: readOnly, logout: readOnly, acceptCharter: readOnly,
     addPoint: readOnly, updatePoint: readOnly, deletePoint: readOnly,
-    addItem: readOnly, updateItem: readOnly, setHidden: readOnly, deleteItem: readOnly,
+    addItem: readOnly, updateItem: readOnly, addPointType: readOnly, setHidden: readOnly, deleteItem: readOnly,
   };
 }
 
@@ -142,6 +142,10 @@ async function firebaseBackend(config) {
       return ref.id;
     },
 
+    // Keep the place's media-type summary (pin colours) right when an item changes kind (e.g. photo → 360°).
+    addPointType(pointId, type) {
+      return F.updateDoc(F.doc(db, 'projects', pid, 'points', pointId), { types: F.arrayUnion(type) });
+    },
     updateItem(pointId, itemId, patch) {
       return F.updateDoc(F.doc(itemsCol(pointId), itemId), patch);
     },

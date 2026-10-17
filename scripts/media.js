@@ -31,6 +31,16 @@ async function compressImage(file, maxPx, maxBytes) {
   }
 }
 
+// 360° detection: XMP "GPano:ProjectionType=equirectangular" (cameras, Google, phone 360 modes) or a 2:1 frame of ≥ 2000 px.
+export async function looksLikePano(file) {
+  let xmp = false;
+  try { xmp = /GPano:ProjectionType\s*(=\s*"|>)\s*equirectangular/i.test(new TextDecoder('latin1').decode(await file.slice(0, 256 * 1024).arrayBuffer())); } catch {}
+  let w = 0, h = 0;
+  try { const b = await createImageBitmap(file); w = b.width; h = b.height; b.close(); } catch {}
+  const ratio = h ? w / h : 0, twoToOne = Math.abs(ratio - 2) < 0.03 && w >= 2000;
+  return { pano: xmp || twoToOne, reason: xmp ? 'xmp' : twoToOne ? 'ratio' : null, w, h, ratio };
+}
+
 // ---------- sounds ----------
 let ctx = null;
 const audioCtx = () => (ctx ??= new AudioContext());

@@ -1,5 +1,17 @@
 # METIS change log
 
+## 2026-10-17 — v0.9.4 360° detection and photo ↔ 360° switch
+
+- Live data: Luna's "360 Google" (4096×2048, 2:1) was stored as type `photo`, because the type came only from the button ("+ Photo").
+- `looksLikePano(file)` (media.js): XMP `GPano:ProjectionType=equirectangular` in the first 256 KB, or a 2:1 frame (±0.03) ≥ 2000 px wide.
+  - "+ Photo" with such an image → a note and **"Enregistrer comme image 360°"**, which reopens the 360° form with the same file and the fields already typed.
+  - "+ Image 360°" with a non-2:1 image → a distortion warning.
+- Editing a photo or a 360° now has **"Type d'image"** (Photo / Image 360°). A stored photo whose Cloudinary size is 2:1 shows the suggestion
+  straight away. Changing the type also adds it to the place's `types` (pin colours) via `addPointType` (allowed by the existing
+  "types only" rule).
+- Browser test (mock): 2:1 in the photo form → note → switched to the 360° form, title and file kept; 4:3 in the 360° form → warning;
+  editing a 4096×2048 photo → note → saved as `pano`; the place's types were updated; the gallery shows a 360° thumbnail. No errors.
+
 ## 2026-10-17 — v0.9.3 ambisonic IRs: processing verified, format auto-detected, 360° link always visible
 
 - **Ambisonics compliance tested** (`tests/irprocess.test.mjs`, now 19/19): a 4-channel AmbiX IR with known channel gains

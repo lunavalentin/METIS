@@ -223,5 +223,11 @@
   "fmtDetectedN": "{n} channels detected: only the first will be used.",
   "fmtChanged": "Format adjusted automatically.",
   "fmtChanged4": "Format set to AmbiX — choose FuMa if your mic records in that order.",
-  "fmtChanged2": "Format set to stereo — choose binaural for a dummy head."
+  "fmtChanged2": "Format set to stereo — choose binaural for a dummy head.",
+  "imageKind": "Image type",
+  "panoDetectedXmp": "This image is tagged as a 360° (equirectangular) photo in its metadata.",
+  "panoDetectedRatio": "This image is {w}×{h} (2:1): it is probably a 360° photo.",
+  "panoSwitch": "Save it as a 360° image",
+  "panoSwitchEdit": "Change the type to 360° image",
+  "panoNotTwoToOne": "This image is {w}×{h}, not 2:1: an equirectangular 360° image is twice as wide as it is tall. It may look distorted."
 }
