@@ -1,7 +1,6 @@
 {
   "backend": "firebase",
-  "project": {
-    "id": "template",
+  "site": {
     "title": {
       "fr": "METIS",
       "en": "METIS"
@@ -11,71 +10,35 @@
       "en": "Mapping environments through Traces, Images and Sound"
     },
     "defaultLang": "fr",
+    "repo": "lunavalentin/METIS",
     "charterPath": "charter/{lang}.md"
   },
   "firebase": {
-    "apiKey": "TODO",
-    "authDomain": "TODO.firebaseapp.com",
-    "projectId": "TODO",
-    "appId": "TODO"
+    "apiKey": "AIzaSyCMw5A7UbzPyu2LiT6-RgI9pplukWdJROw",
+    "authDomain": "metis-esaaa.firebaseapp.com",
+    "projectId": "metis-esaaa",
+    "appId": "1:1018390125134:web:d5bf0f6f90fb44436f011f"
   },
   "accounts": {
-    "emailDomain": "template.metis"
+    "emailDomain": "metis.users"
   },
-  "cloudinary": {
-    "folder": "metis/template"
-  },
-  "map": {
-    "mode": "geo",
-    "center": [
-      45.8932,
-      6.1352
-    ],
-    "zoom": 18,
-    "maxZoom": 22,
-    "planBounds": {
-      "xmax": 100,
-      "ymax": 60
-    }
-  },
-  "floors": [
-    {
-      "id": "ext",
-      "label": {
-        "fr": "Extérieur",
-        "en": "Outdoor"
-      }
+  "secretsPublicKey": "MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAv9YibeC5XNRqlzaR50Z13Zip5BQHHRFQKqSlEgPO0zirCN8s5monFemAwz8mDcARoiwSzwj1hxhTEt7Jdm+CGiRotGfiB6gVSe88qA9+Ji8KHEONWY0dN7pr5/1HZT7H1kzC2LPC5gEFutlCr3Dpq8cDLRrvrm+egrB5ks6bAxxT4X/4CaTKWciVmTflAqbuxgAAcN57IWQfxsStRBQpDlD3P++d2h16erDqaQfhM+tAdJ5PGpnd35sgKErYvkeB1DLklr4v4byU+nSfmoMbkyx/UWNElzxHXkbaJyjNZlfRD/GlXLt8LHt6b2XvQ+CpkxyWT2W9N8dD/LP1m5yk111M3ZkJm4wJwuJMf+bm0QA8XNmzqVBsNBnBW8EE6+sXtL3FGfWJWcbiPw/jqapd0uZ4a9NjQC+YGCzKzr4aEXUjySB/4kakS/rPgkxC8/fjIW21yaQ9XdIwSL6RiUYgpV5sxIr0Fb0SEfZL7K2FtrkzCr9HtuOGLA/GJ45filydAgMBAAE=",
+  "defaults": {
+    "map": {
+      "mode": "geo",
+      "zoom": 17,
+      "maxZoom": 22,
+      "levelZoom": 19
     },
-    {
-      "id": "rdc",
-      "label": {
-        "fr": "Rez-de-chaussée",
-        "en": "Ground floor"
+    "floors": [
+      {
+        "id": "ext",
+        "label": {
+          "fr": "Extérieur",
+          "en": "Outdoor"
+        }
       }
-    }
-  ],
-  "layers": [
-    {
-      "id": "plan-rdc",
-      "label": {
-        "fr": "Plan RDC",
-        "en": "Ground floor plan"
-      },
-      "floor": "rdc",
-      "url": "assets/layers/plan_rdc.png",
-      "opacity": 0.8,
-      "placement": {
-        "center": [
-          45.8992,
-          6.1294
-        ],
-        "widthM": 60,
-        "heightM": 40,
-        "rotationDeg": 0
-      }
-    }
-  ],
-  "audio": {
+    ],
     "samples": [
       {
         "label": {
@@ -98,20 +61,20 @@
         },
         "url": "assets/samples/sweep.wav"
       }
-    ]
-  },
-  "limits": {
-    "photoMaxMB": 2,
-    "panoMaxMB": 6,
-    "soundMaxMB": 10,
-    "maxSoundSec": 300,
-    "textMax": 1000,
-    "perPlace": {
-      "images": 3,
-      "sounds": 3,
-      "texts": 5,
-      "irs": 3
-    },
-    "adminMaxMB": 50
+    ],
+    "limits": {
+      "photoMaxMB": 2,
+      "panoMaxMB": 6,
+      "soundMaxMB": 10,
+      "maxSoundSec": 300,
+      "textMax": 1000,
+      "perPlace": {
+        "images": 3,
+        "sounds": 3,
+        "texts": 5,
+        "irs": 3
+      },
+      "adminMaxMB": 50
+    }
   }
 }

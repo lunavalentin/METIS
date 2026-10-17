@@ -197,6 +197,16 @@
     .ir-process .trim-margin output { color: var(--fg); font-weight: 600; margin-left: .3em; }
     .ir-preview audio { width: 100%; margin-top: .4rem; }
     .ir-preview .ok { color: #8fe3b0; font-size: .85rem; }
+    #switcher { max-width: 13rem; font-size: .82rem; padding-top: .45em; padding-bottom: .45em; }
+    .metis-world-pin { background: none; border: 0; }
+    .metis-world-pin span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--scale);
+      box-shadow: 0 0 0 3px #0d0e12, 0 0 22px rgba(196, 139, 255, .55); transition: transform .15s; animation: glow 3s ease-in-out infinite; }
+    .metis-world-pin span b { width: 12px; height: 12px; border-radius: 50%; background: #0d0e12; }
+    .metis-world-pin.is-private span { background: #3a3c48; box-shadow: 0 0 0 3px #0d0e12, 0 0 0 5px #8b7bff88; animation: none; }
+    .metis-world-pin.is-archived span { filter: saturate(.3); }
+    .metis-world-pin:hover span { transform: scale(1.2); }
+    @keyframes glow { 50% { box-shadow: 0 0 0 3px #0d0e12, 0 0 34px rgba(255, 111, 181, .6); } }
+    .world-tip { border-radius: var(--r-sm) !important; text-align: center; }
     .confirm-msg { font-size: 1rem; line-height: 1.5; margin: .2rem 0 1rem; }
     #confirm { width: min(420px, calc(100% - 2 * var(--gutter))); }
 
@@ -324,6 +334,8 @@
         <img src="assets/metis-logo.svg" alt="">
         <div class="brand-text"><span id="title">METIS</span><span id="subtitle"></span></div>
       </div>
+      <button id="back" class="icon" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></button>
+      <select id="switcher" hidden aria-label="project"></select>
       <button id="settings" class="icon" hidden><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       <button id="lang" aria-label="language">EN</button>
       <button id="auth"></button>

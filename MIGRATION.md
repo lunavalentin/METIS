@@ -17,8 +17,11 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
       `projects/{pid}`: get (member/public) vs list (only `public == true`); `private` (members), `secrets` (bot only),
       `admin` (super; bot writes `cleanup` only); writes blocked when `status != "active"`.
       **33/33 live checks pass** (scratchpad `rules_test.py`, test projects zz-a / zz-b removed afterwards).
-- [ ] 2. Project loading from Firestore (`projects/{pid}` holds the config; `config.json` keeps only the site-wide Firebase web config).
-- [ ] 3. Public world map (dots = public projects), logout → world, project switcher for super-admins.
+- [x] 2. Project loading from Firestore: `config.json` = site-wide only (Firebase web config, defaults, secrets public key);
+      `scripts/project.js` merges `projects/{pid}` into the map/UI config; backend works on `useProject(pid)`.
+- [x] 3. World map (`WorldMap`, public dots; all + private marked for super-admins), visitor → read-only public project + back button,
+      member → own project only (logout → world), super-admin switcher (world / projects / new), last project remembered.
+      **19/19 live checks** (headless Chrome + live Firebase; github.io referer injected on googleapis calls only).
 - [ ] 4. "Nouveau projet" form + JSON import/export; keys encrypted in the browser; "Tester la connexion".
 - [ ] 5. **Project base module (admin side)**: after creating a project, set up its base:
       - upload floor plans (images/PDF pages) to the project's Cloudinary;

@@ -3,7 +3,8 @@
 // (CAVERN = 360° photo + convolution with the linked IR, as in the CAVERN template).
 import { initI18n, t, tr, getLang, setLang, applyI18n } from './i18n.js';
 import { createBackend } from './backend.js';
-import { MetisMap, TYPE_COLORS } from './map.js';
+import { MetisMap, WorldMap, TYPE_COLORS } from './map.js';
+import { toProjectConfig } from './project.js';
 import { uploadMedia, videoEmbed, thumbnail } from './upload.js';
 import { checkFile, fixAndCheck, adminOverride, decodeSound, encodeWav, looksLikePano, DEFAULT_LIMITS, GROUP, fmtMB } from './media.js';
 import { processIR, METIS_SWEEP } from './irprocess.js';
@@ -42,6 +43,7 @@ const META_TEXT = ['description', 'users', 'intendedUse', 'unintendedUses', 'poe
 const PLACE_META = [...META_TEXT];
 
 const state = {
+  site: null, view: null, world: null, projects: [],
   config: null, backend: null, map: null, user: null, adding: false, moving: null,
   points: [], point: null, items: [], unwatchItems: null, unwatchPoints: null, tab: 'info', acousticsIR: null,
   viewerPano: null, viewerLoop: null,
@@ -49,37 +51,83 @@ const state = {
 
 boot().catch(e => { console.error(e); document.body.insertAdjacentHTML('beforeend', `<p class="fatal">${esc(e.message)}</p>`); });
 
-async function boot() {
-  state.config = await (await fetch('config.json', { cache: 'no-cache' })).json();
-  await initI18n(state.config.project.defaultLang);
-  state.backend = await createBackend(state.config);
-  renderHeader();
+const store = { get: k => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+const notice = msg => { $('#notice').textContent = msg || ''; $('#notice').hidden = !msg; };
 
+async function boot() {
+  state.site = await (await fetch('config.json', { cache: 'no-cache' })).json();
+  await initI18n(state.site.site.defaultLang);
+  state.backend = await createBackend(state.site);
+  renderHeader();
+  state.backend.onUser(async user => {
+    state.user = user;
+    try { await route(); } catch (e) { console.error(e); notice(e.message); }
+  });
+}
+
+// Where to go after load / login / logout:
+// static copy → its project; visitor → world map; super-admin → last project (or world); member → their own project.
+async function route() {
+  const u = state.user, b = state.backend;
+  closePoint(); closeViewer();
+  if (b.readOnly && b.staticProjectId) return openProject(b.staticProjectId);
+  if (!u) return showWorld();
+  if (u.role === 'admin') {
+    const last = store.get('metis.lastProject');
+    if (last && await b.getProjectDoc(last)) return openProject(last);
+    return showWorld();
+  }
+  if (!u.project) { await showWorld(); return notice(t('noProject')); }
+  return openProject(u.project);
+}
+
+function teardownMaps() {
+  state.unwatchPoints?.(); state.unwatchPoints = null;
+  closePoint();
+  state.map?.destroy(); state.map = null;
+  state.world?.destroy(); state.world = null;
+  toggleAdding(false);
+}
+
+async function showWorld() {
+  const b = state.backend, admin = isAdmin(state.user);
+  teardownMaps(); notice('');
+  state.view = 'world'; state.config = null; b.useProject(null);
+  state.projects = admin ? await b.listAllProjects() : await b.listPublicProjects();
+  state.world = new WorldMap($('#map'), state.projects, { onProjectClick: p => openProject(p.id), isAdmin: admin });
+  renderHeader();
+  if (!state.projects.length) notice(t(admin ? 'noProjectsAdmin' : 'noPublicProjects'));
+}
+
+async function openProject(pid) {
+  const b = state.backend, u = state.user;
+  const doc = await b.getProjectDoc(pid);
+  if (!doc) { if (u && u.role !== 'admin') { teardownMaps(); renderHeader(); return notice(t('projectUnavailable')); } return showWorld(); }
+  teardownMaps(); notice('');
+  b.useProject(pid);
+  state.view = 'project';
+  state.config = toProjectConfig(state.site, doc, pid);
+  const member = u && (u.role === 'admin' || u.project === pid);
+  state.config.uploadSettings = member ? (await b.getSettings()).cloudinary || {} : {};
+  state.config.canWrite = !!member && !b.readOnly && (u.role === 'admin' || state.config.project.status === 'active');
   state.map = new MetisMap($('#map'), state.config, {
     onPointClick: openPoint,
     onMapClick: coords => (state.moving ? movePointTo(coords) : state.adding && createPointAt(coords)),
   });
   const alignId = new URLSearchParams(location.search).get('align');
-  if (alignId) state.map.startAlign(alignId);
-
-  state.backend.onUser(async user => {
-    state.user = user;
-    state.config.uploadSettings = user ? (await state.backend.getSettings().catch(() => ({}))).cloudinary || {} : {};
-    renderHeader();
-    if (state.point) renderPanel();
-    if (user && !user.charterAcceptedAt) await showCharter();
-    startWatching();
-  });
+  if (alignId && isAdmin(u)) state.map.startAlign(alignId);
+  if (isAdmin(u)) store.set('metis.lastProject', pid);
+  renderHeader();
+  if (state.config.project.status === 'archived') notice(t('archivedNotice'));
+  if (u && u.role !== 'admin' && member && !u.charterAcceptedAt) await showCharter();
+  startWatching();
 }
 
-async function startWatching() {
-  const project = await state.backend.getProject();
-  if (project === null) { $('#notice').textContent = t('classOnly'); $('#notice').hidden = false; return; }
-  $('#notice').hidden = true;
+function startWatching() {
   state.unwatchPoints?.();
   state.unwatchPoints = state.backend.watchPoints(pts => {
     state.points = pts;
-    state.map.setPoints(pts);
+    state.map?.setPoints(pts);
     if (state.point) {
       const fresh = pts.find(p => p.id === state.point.id);
       if (!fresh) return closePoint();               // deleted (here or by someone else)
@@ -89,40 +137,65 @@ async function startWatching() {
   }, err => console.warn(err));
 }
 
+// Shared with admin.js (project creation, settings, accounts, cleanup, export).
+export const ctx = { state, $, esc, t, tr, getLang, dialog: (...a) => dialog(...a), confirmDialog: (...a) => confirmDialog(...a),
+  openProject: (...a) => openProject(...a), showWorld: (...a) => showWorld(...a), renderHeader: (...a) => renderHeader(...a),
+  notice: (...a) => notice(...a), fmtDate: (...a) => fmtDate(...a), toDate: (...a) => toDate(...a), store };
+
 // ---------- header ----------
 function renderHeader() {
-  const c = state.config, u = state.user;
-  $('#title').textContent = tr(c.project.title);
-  $('#subtitle').textContent = tr(c.project.subtitle);
-  const current = state.map?.floor ?? c.floors[0]?.id;
-  $('#floors').hidden = c.floors.length < 2;
+  const c = state.config, u = state.user, b = state.backend, world = state.view !== 'project', admin = isAdmin(u);
+  $('#title').textContent = tr(world ? state.site.site.title : c.project.title);
+  $('#subtitle').textContent = tr(world ? state.site.site.subtitle : c.project.subtitle);
+  const floors = world ? [] : c.floors;
+  const current = state.map?.floor ?? floors[0]?.id;
+  $('#floors').hidden = floors.length < 2;
   $('#floors').setAttribute('aria-label', t('floor'));
-  $('#floors').innerHTML = c.floors.map(f => `<button data-floor="${esc(f.id)}" class="${f.id === current ? 'on' : ''}">${esc(tr(f.label))}</button>`).join('');
-  $('#floors').querySelectorAll('[data-floor]').forEach(b => (b.onclick = () => { state.map.setFloor(b.dataset.floor, { focus: true }); renderHeader(); }));
+  $('#floors').innerHTML = floors.map(f => `<button data-floor="${esc(f.id)}" class="${f.id === current ? 'on' : ''}">${esc(tr(f.label))}</button>`).join('');
+  $('#floors').querySelectorAll('[data-floor]').forEach(btn => (btn.onclick = () => { state.map.setFloor(btn.dataset.floor, { focus: true }); renderHeader(); }));
   $('#lang').textContent = getLang() === 'fr' ? 'EN' : 'FR';
   $('#lang').title = t('switchLang');
   $('#lang').onclick = () => {
     setLang(getLang() === 'fr' ? 'en' : 'fr');
-    applyI18n(); renderHeader(); state.map.relabel();
+    applyI18n(); renderHeader(); state.map?.relabel(); state.world?.setProjects(state.projects);
     if (state.point) renderPanel();
   };
-  $('#add').hidden = !u || state.backend.readOnly;
+  // Back to the world map: visitors browsing a public project (members must log out; super-admins use the switcher).
+  $('#back').hidden = world || !!u || (b.readOnly && !!b.staticProjectId);
+  $('#back').title = t('backToWorld'); $('#back').setAttribute('aria-label', t('backToWorld'));
+  $('#back').onclick = () => showWorld();
+  // Project switcher (super-admins).
+  $('#switcher').hidden = !admin;
+  if (admin) {
+    const opts = [...state.projects].sort((a, b2) => (tr(a.title) || a.id).localeCompare(tr(b2.title) || b2.id));
+    $('#switcher').innerHTML = `<option value="__world">🌍 ${esc(t('worldMap'))}</option>`
+      + opts.map(p => `<option value="${esc(p.id)}">${esc(tr(p.title) || p.id)}${p.status === 'archived' ? ` (${esc(t('archivedShort'))})` : ''}</option>`).join('')
+      + `<option value="__new">＋ ${esc(t('newProject'))}</option>`;
+    $('#switcher').value = world ? '__world' : c.project.id;
+    $('#switcher').onchange = async e => {
+      const v = e.target.value;
+      if (v === '__new') { e.target.value = world ? '__world' : c.project.id; (await import('./admin.js')).newProjectForm(ctx); return; }
+      if (v === '__world') { store.set('metis.lastProject', null); return showWorld(); }
+      openProject(v);
+    };
+  }
+  $('#add').hidden = world || !c?.canWrite;
   $('#add').onclick = () => toggleAdding(!state.adding);
-  $('#auth').hidden = state.backend.readOnly;
+  $('#auth').hidden = b.readOnly;
   $('#auth').classList.toggle('avatar', !!u);
   $('#auth').innerHTML = u ? `<span class="initials">${esc(u.displayName.slice(0, 2).toUpperCase())}</span>` : esc(t('login'));
   $('#auth').title = u ? `${u.displayName} · ${t('logout')}` : '';
   $('#auth').onclick = () => (u ? confirmLogout() : showLogin());
-  $('#settings').hidden = !isAdmin(u) || state.backend.readOnly;
-  $('#settings').title = t('settings'); $('#settings').setAttribute('aria-label', t('settings'));
-  $('#settings').onclick = showSettings;
+  $('#settings').hidden = world || !admin || b.readOnly;
+  $('#settings').title = t('projectSettings'); $('#settings').setAttribute('aria-label', t('projectSettings'));
+  $('#settings').onclick = async () => (await import('./admin.js')).projectAdmin(ctx);
   applyI18n();
 }
 
 function toggleAdding(on) {
   state.adding = on;
   if (on) state.moving = null;
-  state.map.setCursorMode(on);
+  state.map?.setCursorMode(on);
   $('#add').classList.toggle('active', on);
   document.body.classList.toggle('adding', on);
   $('#hint').hidden = !on;
@@ -159,80 +232,6 @@ function confirmDialog(message, okLabel, { danger = false } = {}) {
   });
 }
 
-// Admin settings: file storage (Cloudinary, kept in Firestore so it is not public) and class-only / public switch.
-async function showSettings() {
-  const [settings, project, admin, report] = await Promise.all([state.backend.getSettings(), state.backend.getProject(),
-    state.backend.getAdmin('settings').catch(() => ({})), state.backend.getAdmin('cleanup').catch(() => ({}))]);
-  const c = settings.cloudinary || {}, repo = state.config.project.repo;
-  const form = dialog(`
-    <h2>${t('settings')}</h2>
-    <h3 class="section-title">${t('storageTitle')}</h3>
-    <p class="hint small">${t('storageHint')}</p>
-    <label>${t('cloudName')}<input name="cloudName" value="${esc(c.cloudName || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. dxyz12345"></label>
-    <label>${t('uploadPreset')}<input name="uploadPreset" value="${esc(c.uploadPreset || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. metis_esaaa"></label>
-    ${repo ? `<h3 class="section-title">${t('cleanupTitle')}</h3>
-    <p class="hint small">${t('cleanupHint')}</p>
-    <p class="cleanup-report">${cleanupLine(report)}</p>
-    <label>${t('githubToken')}<input name="githubToken" type="password" autocomplete="off" placeholder="${admin.githubToken ? t('tokenSaved') : 'github_pat_…'}"></label>
-    <p class="hint small">${t('githubTokenHint').replace('{repo}', esc(repo))}</p>
-    <div class="row-actions"><button type="button" class="grad" data-clean="live">${t('cleanNow')}</button><button type="button" data-clean="dry">${t('cleanDry')}</button></div>
-    <p class="hint small clean-status" aria-live="polite"></p>` : ''}
-    <h3 class="section-title">${t('visibilityTitle')}</h3>
-    <label class="check"><input type="checkbox" name="public" ${project?.public ? 'checked' : ''}> ${t('projectPublic')}</label>
-    <p class="hint small">${t('projectPublicHint')}</p>
-    <p class="err"></p>
-    <menu><button type="button" data-cancel>${t('cancel')}</button><button>${t('save')}</button></menu>`,
-    async fd => {
-      const cloudinary = { cloudName: String(fd.get('cloudName')).trim(), uploadPreset: String(fd.get('uploadPreset')).trim() };
-      await state.backend.saveSettings({ cloudinary });
-      const tok = String(fd.get('githubToken') || '').trim();
-      if (tok) await state.backend.saveAdmin('settings', { githubToken: tok });
-      const pub = fd.get('public') === 'on';
-      if (!!project?.public !== pub) {
-        if (pub && !(await confirmDialog(t('confirmPublic'), t('projectPublic')))) return false;
-        await state.backend.setPublic(pub);
-      }
-      state.config.uploadSettings = cloudinary;
-    });
-  form.querySelectorAll('[data-clean]').forEach(b => (b.onclick = () => runCleanup(form, repo, b.dataset.clean === 'dry', admin)));
-}
-
-function cleanupLine(r) {
-  if (!r?.lastRun) return t('cleanupNever');
-  const mb = ((Number(r.freedBytes) || 0) / 1048576).toFixed(1);
-  return t('cleanupLast').replace('{date}', fmtDate(r.lastRun)).replace('{deleted}', r.deleted ?? 0).replace('{mb}', mb)
-    .replace('{stored}', r.stored ?? 0).replace('{used}', r.referenced ?? 0) + (r.dryRun ? ` (${t('cleanDry').toLowerCase()})` : '')
-    + (r.errors?.length ? ` — ⚠ ${esc(r.errors.join(' · '))}` : '');
-}
-
-// Starts .github/workflows/cleanup.yml through the GitHub API (admin-only token), then waits for the bot's report in Firestore.
-async function runCleanup(form, repo, dry, admin) {
-  const status = form.querySelector('.clean-status'), say = m => (status.textContent = m);
-  const token = String(form.elements.githubToken.value || '').trim() || admin.githubToken;
-  if (!token) return say(t('githubTokenMissing'));
-  if (!dry && !(await confirmDialog(t('confirmClean'), t('cleanNow')))) return;
-  form.querySelectorAll('[data-clean]').forEach(b => (b.disabled = true));
-  const started = Date.now();
-  try {
-    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/cleanup.yml/dispatches`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
-      body: JSON.stringify({ ref: 'main', inputs: { dry_run: dry, trigger: `${dry ? 'dry-run' : 'admin'}: ${state.user.displayName}` } }),
-    });
-    if (r.status !== 204) throw new Error(`GitHub ${r.status}: ${(await r.text()).slice(0, 160)}`);
-    if (form.elements.githubToken.value) await state.backend.saveAdmin('settings', { githubToken: token });
-    say(t('cleanStarted'));
-    for (let i = 0; i < 60; i++) {                       // up to ~5 min
-      await new Promise(res => setTimeout(res, 5000));
-      const rep = await state.backend.getAdmin('cleanup').catch(() => ({}));
-      const when = toDate(rep.lastRun);
-      if (when && when.getTime() > started - 5000) { form.querySelector('.cleanup-report').innerHTML = cleanupLine(rep); say(t('cleanDone')); return; }
-      say(`${t('cleanStarted')} ${Math.round((Date.now() - started) / 1000)} s`);
-    }
-    say(t('cleanSlow'));
-  } catch (e) { console.warn(e); say(`${t('cleanFailed')} (${e.message})`); }
-  finally { form.querySelectorAll('[data-clean]').forEach(b => (b.disabled = false)); }
-}
-
 async function confirmLogout() {
   if (await confirmDialog(t('confirmLogout'), t('logout'))) {
     closePoint();
@@ -259,8 +258,9 @@ function showLogin() {
 }
 
 async function showCharter() {
+  const own = state.config.project.charter?.[getLang()] || state.config.project.charter?.fr || state.config.project.charter?.en;
   const path = state.config.project.charterPath.replace('{lang}', getLang());
-  const text = await fetch(path).then(r => (r.ok ? r.text() : '')).catch(() => '');
+  const text = own || await fetch(path).then(r => (r.ok ? r.text() : '')).catch(() => '');
   return new Promise(resolve => {
     dialog(`
       <h2>${t('charterTitle')}</h2>
@@ -396,7 +396,7 @@ function renderPanel() {
   if (!state.point) return;
   const p = state.point, items = visibleItems();
   const listed = items.filter(it => TABS[state.tab].includes(it.type));
-  const canAdd = state.user && !state.backend.readOnly;
+  const canAdd = state.user && state.config.canWrite;
   let body;
   if (state.tab === 'info') body = infoTab(items);
   else if (state.tab === 'acoustics') body = `<div class="acoustics"></div>`;
@@ -445,7 +445,7 @@ function infoTab(items) {
     </div>
     <h3 class="section-title">${t('placeMeta')}</h3>
     ${rows || (m.tags || []).length ? `<dl class="meta-list">${rows}</dl>${(m.tags || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}` : `<p class="empty small">${t('placeMetaEmpty')}</p>`}
-    ${canEditPoint(u, p) && !state.backend.readOnly ? `<button class="wide" data-edit-place>${t('editPlace')}</button>` : ''}`;
+    ${canEditPoint(u, p) && state.config.canWrite ? `<button class="wide" data-edit-place>${t('editPlace')}</button>` : ''}`;
 }
 
 function metaBlock(it) {
@@ -469,7 +469,7 @@ function actions(it) {
     if (linkedIR(it, visibleItems())) btns.push(`<button data-act="cavern" data-id="${it.id}" class="grad">${t('openCavern')}</button>`);
   }
   if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="grad">${t('listenHere')}</button>`);
-  if (u && !state.backend.readOnly) {
+  if (u && state.config.canWrite) {
     if (canEditItem(u, it)) btns.push(`<button data-act="edit" data-id="${it.id}">${t('edit')}</button>`);
     if (isStaff(u)) btns.push(`<button data-act="${it.hidden ? 'unhide' : 'hide'}" data-id="${it.id}">${t(it.hidden ? 'unhide' : 'hide')}</button>`);
     if (canDeleteItem(u, it)) btns.push(`<button data-act="delete" data-id="${it.id}" class="danger-text">${t('delete')}</button>`);

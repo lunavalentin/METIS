@@ -18,7 +18,7 @@ const RotatedOverlay = L.ImageOverlay.extend({
 });
 
 // Centre + width/height in metres → lat/lng bounds of the unrotated image.
-function placementBounds({ center: [lat, lng], widthM, heightM }) {
+export function placementBounds({ center: [lat, lng], widthM, heightM }) {
   const dLat = heightM / 2 / 110540;
   const dLng = widthM / 2 / (111320 * Math.cos(lat * Math.PI / 180));
   return [[lat - dLat, lng - dLng], [lat + dLat, lng + dLng]];
@@ -53,6 +53,58 @@ function pinStyle(types) {
   return `--ring: conic-gradient(${ts.map((x, i) => `${TYPE_COLORS[x]} ${i * step}deg ${(i + 1) * step}deg`).join(', ')})`;
 }
 
+// Muted OSM base shared by the project and world maps (CSS filter .tiles-muted in index.html): modern look, no API key.
+function baseLayers() {
+  const osmOpts = { maxNativeZoom: 19, maxZoom: 22, attribution: '© OpenStreetMap contributors' };
+  return {
+    Plan: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { ...osmOpts, className: 'tiles-muted' }),
+    OSM: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', osmOpts),
+    Satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxNativeZoom: 19, maxZoom: 22, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+    }),
+  };
+}
+
+// Removing a Leaflet map during a pan/zoom animation throws "_leaflet_pos" later: stop animations first.
+function destroyMap(map) {
+  try { map.stop(); map.off(); map.remove(); } catch (e) { console.warn('map remove', e); }
+}
+
+// World map: one dot per project (public ones for visitors; all of them for super-admins, private/archived marked).
+export class WorldMap {
+  constructor(el, projects, { onProjectClick, isAdmin = false } = {}) {
+    this.map = L.map(el, { zoomControl: false, worldCopyJump: true, minZoom: 2 }).setView([35, 8], 3);
+    this.base = baseLayers(); this.base.Plan.addTo(this.map);
+    this.zoomCtl = L.control.zoom({ position: 'bottomright', zoomInTitle: t('zoomIn'), zoomOutTitle: t('zoomOut') }).addTo(this.map);
+    this.markers = L.layerGroup().addTo(this.map);
+    this.onProjectClick = onProjectClick; this.isAdmin = isAdmin;
+    this.setProjects(projects);
+  }
+  setProjects(projects) {
+    this.projects = projects;
+    this.markers.clearLayers();
+    const pts = [];
+    for (const p of projects) {
+      const c = p.map?.center; if (!c) continue;
+      const cls = ['metis-world-pin', p.public ? '' : 'is-private', p.status === 'archived' ? 'is-archived' : ''].join(' ');
+      const icon = L.divIcon({ className: cls, html: '<span><b></b></span>', iconSize: [34, 34], iconAnchor: [17, 17] });
+      const label = `<strong>${escapeHtml(tr(p.title) || p.id)}</strong>`
+        + (p.dates?.start ? `<br><small>${escapeHtml(p.dates.start)}${p.dates.end ? ' → ' + escapeHtml(p.dates.end) : ''}</small>` : '')
+        + (this.isAdmin && !p.public ? `<br><small>${t('privateProject')}</small>` : '')
+        + (p.status === 'archived' ? `<br><small>${t('archivedProject')}</small>` : '');
+      L.marker(c, { icon, riseOnHover: true })
+        .bindTooltip(label, { direction: 'top', offset: [0, -16], className: 'metis-tip world-tip' })
+        .on('click', () => this.onProjectClick?.(p))
+        .addTo(this.markers);
+      pts.push(c);
+    }
+    if (pts.length === 1) this.map.setView(pts[0], 5, { animate: false });
+    else if (pts.length > 1) this.map.fitBounds(L.latLngBounds(pts), { padding: [80, 80], maxZoom: 6, animate: false });
+  }
+  center() { return this.map.getCenter(); }
+  destroy() { destroyMap(this.map); }
+}
+
 export class MetisMap {
   constructor(el, config, { onPointClick, onMapClick }) {
     this.config = config;
@@ -68,29 +120,13 @@ export class MetisMap {
       this.map.fitBounds([[0, 0], [ymax, xmax]]);
     } else {
       this.map = L.map(el, { maxZoom: config.map.maxZoom ?? 22, zoomControl: false }).setView(config.map.center, config.map.zoom);
-      // "Plan" = OSM tiles muted by a CSS filter (.tiles-muted in index.html): modern look, no API key.
-      const osmOpts = { maxNativeZoom: 19, maxZoom: 22, attribution: '© OpenStreetMap contributors' };
-      const muted = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { ...osmOpts, className: 'tiles-muted' }).addTo(this.map);
-      const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', osmOpts);
-      const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxNativeZoom: 19, maxZoom: 22, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
-      });
-      this.baseLayers = { Plan: muted, OSM: osm, Satellite: sat };
+      this.baseLayers = baseLayers();
+      const { Plan: muted, OSM: osm, Satellite: sat } = this.baseLayers;
+      muted.addTo(this.map);
       this.layerControl = L.control.layers({ [t('basePlan')]: muted, OSM: osm, [t('baseSatellite')]: sat }, {}, { collapsed: true }).addTo(this.map);
     }
 
-    for (const ly of config.layers) {
-      // blend "lines": dark-on-white drawings shown as light lines on the dark map (see .overlay-lines).
-      // Blending only mixes with layers in the same Leaflet pane, so line drawings go into the tile pane.
-      const lines = ly.blend === 'lines';
-      const opts = { opacity: ly.opacity ?? 1, attribution: ly.attribution, className: lines ? 'overlay-lines' : '', ...(lines ? { pane: 'tilePane', zIndex: 10 } : {}) };
-      const ov = this.mode === 'plan'
-        ? L.imageOverlay(ly.url, ly.bounds, opts)
-        : new RotatedOverlay(ly.url, placementBounds(ly.placement), { ...opts, rotationDeg: ly.placement.rotationDeg });
-      ov.metis = ly;
-      this.overlays.push(ov);
-      this.layerControl?.addOverlay(ov, tr(ly.label));
-    }
+    for (const ly of config.layers) this.addLayer(ly);
 
     this.recenterCtl = new RecenterControl({ onClick: () => this.recenter() }).addTo(this.map);
     this.zoomCtl = L.control.zoom({ position: 'bottomright', zoomInTitle: t('zoomIn'), zoomOutTitle: t('zoomOut') }).addTo(this.map);
@@ -100,6 +136,23 @@ export class MetisMap {
     this.map.on('click', e => onMapClick?.(this.toPointCoords(e.latlng)));
     this.setFloor(this.floor);
   }
+
+  addLayer(ly) {
+    // blend "lines": dark-on-white drawings shown as light lines on the dark map (see .overlay-lines).
+    // Blending only mixes with layers in the same Leaflet pane, so line drawings go into the tile pane.
+    const lines = ly.blend === 'lines';
+    const opts = { opacity: ly.opacity ?? 1, attribution: ly.attribution, className: lines ? 'overlay-lines' : '', ...(lines ? { pane: 'tilePane', zIndex: 10 } : {}) };
+    const ov = this.mode === 'plan'
+      ? L.imageOverlay(ly.url, ly.bounds, opts)
+      : new RotatedOverlay(ly.url, placementBounds(ly.placement), { ...opts, rotationDeg: ly.placement.rotationDeg });
+    ov.metis = ly;
+    this.overlays.push(ov);
+    this.layerControl?.addOverlay(ov, tr(ly.label));
+    return ov;
+  }
+
+  destroy() { destroyMap(this.map); }
+  view() { const c = this.map.getCenter(); return { center: [Math.round(c.lat * 1e6) / 1e6, Math.round(c.lng * 1e6) / 1e6], zoom: Math.round(this.map.getZoom()) }; }
 
   // Re-create the controls whose labels come from i18n (called after a language switch).
   relabel() {
@@ -124,14 +177,15 @@ export class MetisMap {
     }
   }
 
-  // Placement helper (geo mode): open the site with ?align=<layerId>. Drag the centre handle, adjust rotation,
-  // width and opacity, then copy the JSON into config.json → layers[].placement.
-  startAlign(layerId) {
+  // Placement editor (geo mode): drag the centre handle, set rotation / width / opacity on the satellite base.
+  // onSave(placement, opacity) / onCancel(); without callbacks (?align=<layerId>) it offers "copy JSON" instead.
+  editLayer(layerId, { onSave, onCancel } = {}) {
     const ov = this.overlays.find(o => o.metis.id === layerId);
     if (!ov || this.mode !== 'geo') return false;
     this.setFloor(ov.metis.floor);
+    const usedPlan = this.map.hasLayer(this.baseLayers.Plan);
     this.baseLayers.Plan.remove(); this.baseLayers.Satellite.addTo(this.map); // align against real roofs
-    this.map.fitBounds(L.latLngBounds(placementBounds(ov.metis.placement)), { padding: [40, 40] });
+    this.map.fitBounds(L.latLngBounds(placementBounds(ov.metis.placement)), { padding: [60, 60] });
     const p = structuredClone(ov.metis.placement);
     const img = new Image();
     img.src = ov.metis.url;
@@ -142,34 +196,47 @@ export class MetisMap {
     }).addTo(this.map);
     const panel = L.DomUtil.create('div', 'align-panel', this.map.getContainer());
     L.DomEvent.disableClickPropagation(panel); L.DomEvent.disableScrollPropagation(panel);
+    const editing = !!onSave;
     panel.innerHTML = `
-      <strong>${t('alignTitle')} · ${escapeHtml(layerId)}</strong>
+      <strong>${t('alignTitle')} · ${escapeHtml(tr(ov.metis.label) || layerId)}</strong>
+      <p class="hint small">${t('alignHint')}</p>
       <label>${t('alignRotation')} <output data-o="rot"></output>°<input type="range" data-k="rot" min="-180" max="180" step="0.25"></label>
-      <label>${t('alignWidth')} <output data-o="w"></output> m<input type="range" data-k="w" min="10" max="500" step="0.25"></label>
+      <label>${t('alignWidth')} <output data-o="w"></output> m<input type="range" data-k="w" min="5" max="800" step="0.25"></label>
       <label>${t('alignOpacity')}<input type="range" data-k="op" min="0.1" max="1" step="0.05"></label>
-      <textarea readonly rows="4"></textarea>
-      <button type="button">${t('alignCopy')}</button>`;
+      ${editing ? `<div class="row-actions"><button type="button" data-cancel>${t('cancel')}</button><button type="button" class="grad" data-save>${t('save')}</button></div>`
+        : `<textarea readonly rows="4"></textarea><button type="button" data-copy>${t('alignCopy')}</button>`}`;
     const q = sel => panel.querySelector(sel);
+    const orig = { placement: structuredClone(ov.metis.placement), opacity: ov.options.opacity };
     q('[data-k=rot]').value = p.rotationDeg; q('[data-k=w]').value = p.widthM; q('[data-k=op]').value = ov.options.opacity;
-    const r4 = v => Math.round(v * 1e6) / 1e6;
+    const r6 = v => Math.round(v * 1e6) / 1e6;
     const apply = () => {
       p.rotationDeg = Number(q('[data-k=rot]').value);
       p.widthM = Number(q('[data-k=w]').value);
       p.heightM = Math.round(p.widthM * ratio() * 100) / 100;
-      const ll = handle.getLatLng(); p.center = [r4(ll.lat), r4(ll.lng)];
+      const ll = handle.getLatLng(); p.center = [r6(ll.lat), r6(ll.lng)];
       ov.options.rotationDeg = p.rotationDeg;
       ov.setBounds(L.latLngBounds(placementBounds(p)));
       ov.setOpacity(Number(q('[data-k=op]').value));
       q('[data-o=rot]').textContent = p.rotationDeg; q('[data-o=w]').textContent = p.widthM;
-      q('textarea').value = JSON.stringify({ placement: p });
+      if (!editing) q('textarea').value = JSON.stringify({ placement: p });
+    };
+    const finish = () => {
+      handle.remove(); panel.remove();
+      this.baseLayers.Satellite.remove(); if (usedPlan) this.baseLayers.Plan.addTo(this.map);
     };
     panel.querySelectorAll('input').forEach(i => i.addEventListener('input', apply));
     handle.on('drag', apply);
     img.onload = apply;
-    q('button').onclick = () => navigator.clipboard?.writeText(q('textarea').value);
+    q('[data-copy]')?.addEventListener('click', () => navigator.clipboard?.writeText(q('textarea').value));
+    q('[data-save]')?.addEventListener('click', () => { finish(); ov.metis.placement = structuredClone(p); ov.metis.opacity = ov.options.opacity; onSave(structuredClone(p), ov.options.opacity); });
+    q('[data-cancel]')?.addEventListener('click', () => {
+      finish(); ov.options.rotationDeg = orig.placement.rotationDeg;
+      ov.setBounds(L.latLngBounds(placementBounds(orig.placement))); ov.setOpacity(orig.opacity); onCancel?.();
+    });
     apply();
     return true;
   }
+  startAlign(layerId) { return this.editLayer(layerId); }
 
   toPointCoords(latlng) {
     return this.mode === 'plan' ? { x: latlng.lng, y: latlng.lat, floor: this.floor } : { lat: latlng.lat, lng: latlng.lng, floor: this.floor };

@@ -232,5 +232,17 @@
   "panoNotTwoToOne": "Cette image fait {w}×{h}, pas 2:1 : une image 360° équirectangulaire est deux fois plus large que haute. Elle risque de s'afficher déformée.",
   "proc_trimDb": "Sensibilité de la coupe : marge au-dessus du bruit",
   "proc_trimDbHint": "0 dB = garder la queue jusqu'au bruit · 20 dB = couper tôt (queue plus courte).",
-  "proc_cutAt": "coupe à +{db} dB du bruit"
+  "proc_cutAt": "coupe à +{db} dB du bruit",
+  "backToWorld": "Carte du monde",
+  "worldMap": "Carte du monde",
+  "newProject": "Nouveau projet",
+  "archivedShort": "archivé",
+  "privateProject": "privé (visible par les admins)",
+  "archivedProject": "archivé",
+  "projectSettings": "Réglages du projet",
+  "noProject": "Ce compte n'est rattaché à aucun projet.",
+  "projectUnavailable": "Votre projet est introuvable ou inaccessible. Contactez les admins.",
+  "noPublicProjects": "Aucun projet public pour l'instant. Connectez-vous pour accéder au vôtre.",
+  "noProjectsAdmin": "Aucun projet. Créez-en un avec « Nouveau projet » dans le menu en haut.",
+  "archivedNotice": "Projet archivé : consultation seule."
 }

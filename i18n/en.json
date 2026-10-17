@@ -232,5 +232,17 @@
   "panoNotTwoToOne": "This image is {w}×{h}, not 2:1: an equirectangular 360° image is twice as wide as it is tall. It may look distorted.",
   "proc_trimDb": "Cut sensitivity: margin above the noise",
   "proc_trimDbHint": "0 dB = keep the tail down to the noise · 20 dB = cut early (shorter tail).",
-  "proc_cutAt": "cut at +{db} dB above the noise"
+  "proc_cutAt": "cut at +{db} dB above the noise",
+  "backToWorld": "World map",
+  "worldMap": "World map",
+  "newProject": "New project",
+  "archivedShort": "archived",
+  "privateProject": "private (visible to admins)",
+  "archivedProject": "archived",
+  "projectSettings": "Project settings",
+  "noProject": "This account is not attached to any project.",
+  "projectUnavailable": "Your project cannot be found or opened. Contact the admins.",
+  "noPublicProjects": "No public project yet. Log in to open yours.",
+  "noProjectsAdmin": "No project yet. Create one with “New project” in the menu at the top.",
+  "archivedNotice": "Archived project: read-only."
 }
