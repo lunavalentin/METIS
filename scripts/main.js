@@ -29,6 +29,8 @@ async function boot() {
     onPointClick: openPoint,
     onMapClick: coords => state.adding && createPointAt(coords),
   });
+  const alignId = new URLSearchParams(location.search).get('align');
+  if (alignId) state.map.startAlign(alignId);
 
   state.backend.onUser(async user => {
     state.user = user;

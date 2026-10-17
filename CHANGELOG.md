@@ -1,5 +1,26 @@
 # METIS change log
 
+## 2026-10-17 — v0.3 serif wordmark, recenter, plan overlays + alignment tool
+
+**Changes**
+- Display font changed from Syne to **Cormorant Garamond** (Luna wanted something more elegant). Used for the
+  wordmark (letter-spaced, pale gradient), panel titles and dialog titles.
+- **Recenter** button (bottom-right, above the zoom buttons): flies back to `config.map.center`/`zoom` (or to the plan bounds in plan mode).
+- Layers: new `attribution` option (credit shown in the map footer) and `blend: "lines"` for black-on-white drawings,
+  which are inverted and screen-blended so they show as light lines on the dark map. These overlays live in Leaflet's
+  tile pane, because blending is isolated per pane. In the overlay pane they rendered as black rectangles; that was the first attempt.
+- **Alignment tool**: open the site with `?align=<layerId>`. It switches to the satellite base, adds a draggable centre handle
+  and rotation/width/opacity sliders (height follows the image ratio), and copies `{"placement": …}` JSON for config.json.
+
+**ESAAA (instance config, not template)**: test layer `vurpas-r3` = the Vurpas R+3 plan, hotlinked from
+vurpas-architectes.com (no copy in the repo), credited "© Vurpas Architectes — test only".
+The first placement was fitted by eye on Esri imagery, using the curved hall wall ↔ curved skylight, the two rooms that
+stick out ↔ the roof blocks, and the tree symbols ↔ real trees: centre 45.893247, 6.135063; 194.5 × 126.5 m; rotation 42°.
+It is approximate (off by several metres) and needs finishing with `?align=vurpas-r3`.
+
+**Tests**: headless Chrome screenshots of the ESAAA config with the new template code: align mode on satellite
+(lines visible, panel works); floor stack; wordmark. The alignment drag/sliders were not exercised (static screenshot only).
+
 ## 2026-10-16 — v0.2 dark identity, ESAAA groundwork, publishing
 
 **Changes**
