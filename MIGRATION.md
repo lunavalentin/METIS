@@ -42,4 +42,15 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
 - [x] 8. Archive (status toggle; members read-only, admins can still edit) + "Télécharger la version statique": ZIP built in the
       browser (site + vendor libs + Google Fonts + data + media with local links). Tested live (6/6) and offline with
       Firebase/Cloudinary/CDNs/Fonts blocked (11/11: plan, photo, IR analysis + playback, samples, text, fonts).
-- [ ] 9. Publish from the METIS repo (GitHub Pages); retire METIS_ESAAA.
+- [x] 9. Published: GitHub Pages on the METIS repo → https://lunavalentin.github.io/METIS/. Live end-to-end 8/8 (real referer:
+      world map, student login → own project, create place, text, photo upload to the project's Cloudinary, logout, admin panel).
+      METIS_ESAAA workflows (sync, cleanup) disabled; its repo and site are left as they are (unused).
+      All test projects and test accounts deleted (2026-10-17): Firestore has no project; Auth has luna, celess, nettoyage.
+
+## Left for Luna
+- Create the first real project (e.g. ESAAA) with ＋ Nouveau projet — with the Cloudinary **API key + secret**, so the
+  connection test also confirms the keys and the nightly cleanup can run for it.
+- New fine-grained GitHub token for **lunavalentin/METIS** (Actions: read & write) → ⚙ → Stockage → Jeton GitHub
+  (the old one was for METIS_ESAAA). Without it the nightly cleanup still runs; only the button needs it.
+- Cloudinary `cwmp8wdp` still holds small test files under `metis/zz-*` and the old `metis/esaaa` uploads (Media Library → delete).
+- Optional: delete the old `METIS_ESAAA` repo / Pages, and the unused `INSTANCES_DISPATCH_TOKEN` secret on METIS.

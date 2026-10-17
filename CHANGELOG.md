@@ -1,5 +1,23 @@
 # METIS change log
 
+## 2026-10-17 — v1.0 one site, many projects
+
+Luna's new architecture (see MIGRATION.md for the full plan, decisions and test counts):
+- **One site** (GitHub Pages of this repo), one Firebase, **one Cloudinary per project**; project settings in Firestore.
+- World map of public projects; members land in their own project; admins switch between projects.
+- **＋ Nouveau projet**: form or JSON import, address search, Cloudinary connection test (unsigned upload + signed delete),
+  API keys encrypted in the browser (RSA-OAEP; private key only in the cleanup job), accounts generated (CSV + admin copy).
+- **⚙ Réglages du projet**: Général (titles, dates, public, JSON export) · Base (levels, PNG/PDF plans + placement editor,
+  home view, samples, charter, limits) · Comptes (list, CSV, add, new password, delete) · Stockage (cloud settings, keys,
+  cleanup report, "Nettoyer maintenant") · Archive (read-only mode, self-contained static ZIP).
+- Cleanup job loops over projects with each project's decrypted keys; keeps plans and samples.
+- Rules rewritten for projects (members / public / archived / secrets / admin docs); 33/33 live rule checks.
+- Removed: per-instance copies and template sync, freeze script, create_accounts script, ESAAA data and accounts.
+- Fixed along the way: overlapping navigations ("Map container is already initialized"), Leaflet error when a map is removed
+  mid-animation, plan aspect ratio while its image loads, level/sample edits read after the array changed, switcher blank
+  after reload, permission error when logging out with live listeners, unescaped Cloudinary messages.
+- Not tested: a real Cloudinary deletion with real keys (needs a project created with its keys); PDF plans on phones.
+
 ## 2026-10-17 — v0.9.5 tail-cut sensitivity slider
 
 - `trimTail(snd, fadeMs, marginDb)`: the cut happens where the 10 ms energy comes within `marginDb` of the noise floor (was a fixed +3 dB).

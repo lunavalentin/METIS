@@ -1,43 +1,41 @@
 # METIS — Mapping Environments through Traces, Images and Sound
 
-Collaborative, map-based documentation template for teaching workshops (acoustics, multimedia, GIS).
-Design: see [SPEC.md](SPEC.md). Change log: [CHANGELOG.md](CHANGELOG.md).
+One website for many workshops: **https://lunavalentin.github.io/METIS/**
+Design notes: [SPEC.md](SPEC.md) (original design) · [MIGRATION.md](MIGRATION.md) (multi-project architecture, status) · [CHANGELOG.md](CHANGELOG.md).
 
-## Run locally
-    python3 -m http.server 8000      # then open http://localhost:8000
+## How it works
+- **Visitors** see a world map with one dot per *public* project, and can browse a project read-only.
+- **Students / instructors** log in with the username + password generated for them and land directly in their project
+  (log out to see the world map again). Instructors can also hide or delete content.
+- **Admins** (Luna, Celeste) have a project menu in the header: world map, every project, **＋ Nouveau projet**;
+  and **⚙ Réglages du projet** in a project: Général · Base · Comptes · Stockage · Archive.
 
-## Set up a new instance (e.g. METIS_ESAAA)
-1. Copy this folder into a new repo; edit `config.json` (project id, titles, map centre, floors, layers, samples).
-2. Firebase (Spark plan is enough): create a project → Authentication: enable Email/Password →
-   Firestore: create database (europe-west) → paste `firestore.rules` → add a Web app and copy its config into
-   `config.json.firebase` → Authentication → Settings → Authorized domains: add `lunavalentin.github.io`.
-3. Create `projects/<id>` in Firestore with `{ public: false }`.
-4. Cloudinary: create an **unsigned** upload preset restricted to folder `metis/<id>`, allowed formats and max size;
-   put cloud name + preset in `config.json.cloudinary`.
-5. Accounts: `accounts.csv` (`username,displayName,role`) →
-   `GOOGLE_APPLICATION_CREDENTIALS=serviceAccount.json deno run -A --config tools/deno.json tools/create_accounts.mjs accounts.csv <emailDomain> <projectId>`
-   (add `--dry-run` first; Node works too). Also creates `projects/<id>` with `public: false`.
-6. Put floor plans in `assets/layers/`, dry samples in `assets/samples/`, write `charter/{fr,en}.md`.
-7. Push to GitHub, enable Pages.
+## Create a project (admins, on the website)
+1. Create a free Cloudinary account for the project and an **unsigned upload preset** (Settings → Upload → Upload presets).
+   Note the cloud name, the preset name, and the API key + secret (Settings → API Keys).
+2. Header menu → **＋ Nouveau projet** (or import a JSON exported from another project). Fill in the title, place, dates,
+   number of student and instructor accounts, the Cloudinary fields, and press **Tester la connexion**.
+3. **Créer le projet**: the accounts are generated and their CSV (usernames + passwords) downloads; a copy stays in
+   ⚙ → Comptes. The settings panel then opens on **Base**: levels, floor plans (PNG/JPEG/PDF) placed on the map,
+   home view, sound samples, charter, limits.
+4. ⚙ → Général → **Projet public** to put it on the world map.
 
-## Updates (template → instances)
-Instances copy the template's code with `.github/workflows/sync-template.yml`. The paths copied are listed in
-the instance's `metis.sync.json` under `managed`; everything else (config, charter, assets, data) belongs to the instance.
-The sync runs every hour, from the Actions tab ("Run workflow"), and right after each push to this template if the
-`INSTANCES_DISPATCH_TOKEN` secret is set (see `.github/workflows/notify-instances.yml`; instances are listed in `instances.json`).
-To freeze an instance, set `"enabled": false` in its `metis.sync.json`.
+## End of a workshop
+⚙ → Archive: **Archiver** (read-only for everyone but admins; files stay on the project's Cloudinary) and
+**Télécharger la version statique** (a self-contained ZIP: unzip, then `python3 -m http.server` in the folder).
 
-## Storage cleanup (Cloudinary)
-Deleting on the site does not delete the Cloudinary file (unsigned uploads cannot delete). Copy `.github/workflows/cleanup.yml`
-from METIS_ESAAA into the instance, set the secrets `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` and `METIS_BOT_PASSWORD`
-(a `service` account made with `tools/make_auth_import.mjs`), and set `project.repo` in config.json. The cleanup runs nightly;
-admins can also start it from ⚙ Réglages with a fine-grained GitHub token (Actions: read & write on that repo).
-
-## After the workshop
-`tools/freeze.mjs <id>` → set `"backend": "static"` → set `public: true` / commit.
+## Behind the scenes
+- `config.json`: site-wide settings only (Firebase web config, defaults, public key for secrets). Each project's settings live
+  in Firestore `projects/<id>`; its upload preset in `projects/<id>/private`; its Cloudinary API keys **encrypted** in
+  `projects/<id>/secrets` (only the cleanup job can decrypt them: GitHub secret `METIS_PRIVATE_KEY`).
+- Rules: `firestore.rules` (deploy: `firebase deploy --only firestore:rules`).
+- Cleanup: `.github/workflows/cleanup.yml` runs `tools/cleanup.mjs` nightly (and from ⚙ → Stockage → Nettoyer maintenant,
+  which needs a fine-grained GitHub token with *Actions: read & write* on this repo): it deletes, on each project's Cloudinary,
+  the files no longer used by its places, plans or samples.
+- Admin accounts (claims `admin` / `service`) are made with `tools/make_auth_import.mjs` + `firebase auth:import`.
 
 ## Tests
-    deno run tests/irAnalysis.test.mjs    # or node
+    deno run tests/irAnalysis.test.mjs; deno run tests/irprocess.test.mjs; deno run tests/cleanup.test.mjs
 
 ## Credits
-Luna Leila Valentin. License: TODO.
+Luna Leila Valentin, with Celeste Betancur Gutierrez.
