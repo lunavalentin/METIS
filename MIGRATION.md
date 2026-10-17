@@ -35,6 +35,11 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
 - [x] 6. Account generation (**18/18 live checks**: generate, CSV + Firebase copy, login → own project + project charter,
       reset → new password works / old refused, delete → refused, accounts from the new-project form). Spec: number of students / instructors in the form/JSON → accounts created from the admin's browser
       (secondary Firebase session), CSV downloaded + copy in `projects/{pid}/admin/accounts`; "+ N comptes"; password reset.
-- [ ] 7. Global cleanup job (nightly, loops over projects, decrypts each project's Cloudinary keys).
-- [ ] 8. Archive mode (`status: archived`, read-only) + admin-only "Télécharger la version statique" (ZIP built in the browser).
+- [x] 7. Global cleanup (`tools/cleanup.mjs` + `cleanup-lib.mjs`, workflow in METIS, nightly + dispatch with `project`).
+      Unit tests 6/6 (plans/samples/items kept, orphans + old `_test` removed, < 1 h kept). Live: local + Actions runs
+      log in, list projects, decrypt keys (shape check), count references, write the report shown in ⚙ Stockage.
+      **Real deletion not re-tested**: needs a project's real Cloudinary keys (the deletion code is unchanged from the run that deleted 13 files on 2026-10-17).
+- [x] 8. Archive (status toggle; members read-only, admins can still edit) + "Télécharger la version statique": ZIP built in the
+      browser (site + vendor libs + Google Fonts + data + media with local links). Tested live (6/6) and offline with
+      Firebase/Cloudinary/CDNs/Fonts blocked (11/11: plan, photo, IR analysis + playback, samples, text, fonts).
 - [ ] 9. Publish from the METIS repo (GitHub Pages); retire METIS_ESAAA.

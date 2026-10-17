@@ -197,7 +197,9 @@ async function saveProject(ctx, patch, tab) {
   ctx.$('#admin').classList.add('busy');              // no second action while this one reloads the project
   try { await ctx.state.backend.updateProject(patch); } catch (e) { ctx.$('#admin').classList.remove('busy'); throw e; }
   await ctx.openProject(ctx.state.config.project.id);
-  ctx.state.projects = await ctx.state.backend.listAllProjects(); ctx.renderHeader();
+  // refresh the switcher (may fail harmlessly if the admin logged out meanwhile)
+  try { ctx.state.projects = await ctx.state.backend.listAllProjects(); ctx.renderHeader(); } catch (e) { console.warn('project list', e.code); }
+  if (!ctx.state.config) return;
   ctx.$('#admin').classList.remove('busy');
   projectAdmin(ctx, tab);
 }

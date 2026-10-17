@@ -246,6 +246,7 @@ function confirmDialog(message, okLabel, { danger = false } = {}) {
 async function confirmLogout() {
   if (await confirmDialog(t('confirmLogout'), t('logout'))) {
     closePoint();
+    state.unwatchPoints?.(); state.unwatchPoints = null;    // private data: stop listening before the session ends
     await state.backend.logout();
   }
 }

@@ -146,7 +146,7 @@ async function firebaseBackend(config) {
     },
     watchItems(pointId, cb, onError) {
       const q = F.query(itemsCol(pointId), F.orderBy('createdAt', 'desc'));
-      return F.onSnapshot(q, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onError);
+      return F.onSnapshot(q, s => cb(s.docs.map(d => ({ id: d.id, ...d.data() }))), onError || (e => console.warn('items', e.code)));
     },
     // Everything a static copy needs: project doc, places, items (dates as ISO strings).
     async exportProject() {

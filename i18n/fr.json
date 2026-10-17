@@ -349,5 +349,9 @@
   "arc_staticHint": "Un ZIP autonome du projet (site en lecture seule + données + fichiers). Décompressez-le et ouvrez-le avec un serveur web, ou publiez-le n'importe où : il ne dépend plus de Firebase ni de Cloudinary.",
   "arc_withMedia": "Inclure les fichiers (photos, sons, plans)",
   "arc_download": "Télécharger la version statique",
-  "arc_done": "ZIP prêt ({mb} Mo)."
+  "arc_done": "ZIP prêt ({mb} Mo).",
+  "exp_data": "Lecture des données du projet…",
+  "exp_site": "Copie du site…",
+  "exp_media": "Téléchargement des fichiers : {n} / {total}",
+  "exp_zip": "Compression du ZIP…"
 }
