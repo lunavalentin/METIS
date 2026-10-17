@@ -14,7 +14,7 @@ async function staticBackend() {
     readOnly: true,
     onUser: cb => cb(null),
     async getProject() { return data.project; },
-    getSettings: async () => ({}), saveSettings: readOnly, setPublic: readOnly,
+    getSettings: async () => ({}), saveSettings: readOnly, setPublic: readOnly, getAdmin: async () => ({}), saveAdmin: readOnly,
     watchPoints(cb) { cb(data.points); return () => {}; },
     watchItems(pointId, cb) { cb(data.items[pointId] || []); return () => {}; },
     login: readOnly, logout: readOnly, acceptCharter: readOnly,
@@ -86,6 +86,15 @@ async function firebaseBackend(config) {
     saveSettings(patch) {
       return F.setDoc(F.doc(db, 'projects', pid, 'private', 'settings'), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid }, { merge: true });
     },
+    // Admin-only documents (rules): admin/settings (e.g. githubToken) and admin/cleanup (last cleanup report).
+    async getAdmin(doc) {
+      const s = await F.getDoc(F.doc(db, 'projects', pid, 'admin', doc));
+      return s.exists() ? s.data() : {};
+    },
+    saveAdmin(doc, patch) {
+      return F.setDoc(F.doc(db, 'projects', pid, 'admin', doc), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid }, { merge: true });
+    },
+
     // Class-only (false) vs public (true) viewing of the whole project. Admins only (rules).
     setPublic(isPublic) {
       return F.setDoc(F.doc(db, 'projects', pid), { public: !!isPublic }, { merge: true });

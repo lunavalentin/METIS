@@ -1,5 +1,33 @@
 # METIS change log
 
+## 2026-10-17 — v0.7 Cloudinary cleanup (deleted files really removed)
+
+**Problem verified on the live services**: deleting a file or a place on the site removed the Firestore document, but the file stayed on
+Cloudinary (HTTP 200 afterwards). An unsigned preset can upload but never delete, and deleting needs the API secret, which cannot be in the page.
+
+**Fix** (Luna chose the nightly-cleanup option and asked for an "instant clean" button):
+- `tools/cleanup.mjs` (template, synced): logs in as bot account `nettoyage` (new role `service`) and lists every item's
+  `media.publicId` in Firestore. It then lists Cloudinary `image`/`video`/`raw` assets under `config.cloudinary.folder` (Admin API) and deletes
+  those that are no longer referenced and are older than 1 h, with `invalidate=true` so derived thumbnails and CDN copies go too. It writes a
+  report to `projects/<id>/admin/cleanup` and the Actions summary. **Safety stop**: if Firestore lists no referenced file while Cloudinary
+  holds more than 5, nothing is deleted (`FORCE=1` overrides). `--dry-run` lists without deleting.
+- ESAAA `.github/workflows/cleanup.yml`: runs nightly at 02:00 UTC and on `workflow_dispatch` (inputs `dry_run`, `trigger`).
+  Secrets: `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (to be set by Luna), `METIS_BOT_PASSWORD` (set).
+- ⚙ Réglages: a "Nettoyage du stockage" section with the last report, a GitHub token field, and **Nettoyer maintenant** / **Simulation**
+  buttons. These start the workflow through the GitHub API, then wait for the bot's report.
+  The token is stored in `projects/<id>/admin/settings` (admins only).
+- Rules: `projects/{pid}/admin/{doc}` is read by admins only and written by admins, plus the service role for `cleanup` only.
+  `make_auth_import.mjs` accepts the `service` role. `config.project.repo` (ESAAA: `lunavalentin/METIS_ESAAA`) turns the section on.
+
+**Tests**
+- The bot logs in with role `service`.
+- Rules on the live project: the bot writes `admin/cleanup` (200), but cannot write or read `admin/settings` (403);
+  a student can neither read nor write `admin/cleanup` (403).
+- `cleanup.mjs --dry-run` against the live Firestore with fake Cloudinary keys: login, settings and every place/item listed OK;
+  it stopped at the Cloudinary listing (401 "unknown api_key"), as expected without the real keys.
+- ⚙ section (mock, headless Chrome): the report line, the buttons, and the missing-token message render; no errors.
+- **Not tested yet**: a real Cloudinary list/delete and the GitHub-API trigger. These need Luna's Cloudinary API key/secret and a fine-grained token.
+
 ## 2026-10-17 — v0.6.4 add buttons per tab
 
 - No add button on Infos any more. Galerie shows "+ Photo", "+ Image 360°" and "+ Vidéo (lien)"; Sons shows "+ Enregistrement audio"

@@ -156,5 +156,20 @@
   "lim_adminTooBig": "Même pour un·e admin, le maximum est {max} par fichier.",
   "lim_adminHint": "Admin : vous pouvez envoyer plus lourd ou plus long, jusqu’à {max} Mo.",
   "networkError": "Connexion interrompue pendant l'envoi (3 essais). Vérifiez le réseau et réessayez.",
-  "addVideoLink": "Vidéo (lien)"
+  "addVideoLink": "Vidéo (lien)",
+  "cleanupTitle": "Nettoyage du stockage",
+  "cleanupHint": "Un fichier supprimé du site reste sur Cloudinary jusqu'au nettoyage : automatique chaque nuit (vers 3 h), ou immédiat avec le bouton ci-dessous. Seuls les fichiers de plus d'1 h qui ne sont plus utilisés sont effacés.",
+  "cleanupNever": "Aucun nettoyage effectué pour l’instant.",
+  "cleanupLast": "Dernier nettoyage : {date} — {deleted} fichier(s) effacé(s), {mb} Mo libérés · {used} utilisés / {stored} stockés.",
+  "githubToken": "Jeton GitHub (pour le bouton « Nettoyer maintenant »)",
+  "githubTokenHint": "Jeton « fine-grained » limité au dépôt {repo}, permission « Actions : lecture et écriture ». Lisible uniquement par les admins.",
+  "tokenSaved": "•••••• (enregistré — laisser vide pour garder)",
+  "githubTokenMissing": "Ajoutez d'abord un jeton GitHub (champ ci-dessus).",
+  "cleanNow": "Nettoyer maintenant",
+  "cleanDry": "Simulation",
+  "confirmClean": "Effacer définitivement de Cloudinary tous les fichiers qui ne sont plus utilisés sur le site ?",
+  "cleanStarted": "Nettoyage lancé, environ 1 minute…",
+  "cleanDone": "Nettoyage terminé.",
+  "cleanSlow": "Le nettoyage prend plus de temps que prévu : voyez l’onglet Actions du dépôt GitHub.",
+  "cleanFailed": "Le nettoyage n’a pas pu être lancé"
 }

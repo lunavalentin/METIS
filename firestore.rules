@@ -26,6 +26,13 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
 
+      // Admin-only data: GitHub token for the "clean now" button (settings) and the last cleanup report (cleanup).
+      // The cleanup bot (role "service", password only in GitHub secrets) may write the report.
+      match /admin/{doc} {
+        allow read: if isAdmin();
+        allow write: if isAdmin() || (role() == 'service' && doc == 'cleanup');
+      }
+
       match /layers/{lid} {
         allow read: if canRead(pid);
         allow write: if isStaff();

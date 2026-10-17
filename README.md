@@ -27,6 +27,12 @@ The sync runs every hour, from the Actions tab ("Run workflow"), and right after
 `INSTANCES_DISPATCH_TOKEN` secret is set (see `.github/workflows/notify-instances.yml`; instances are listed in `instances.json`).
 To freeze an instance, set `"enabled": false` in its `metis.sync.json`.
 
+## Storage cleanup (Cloudinary)
+Deleting on the site does not delete the Cloudinary file (unsigned uploads cannot delete). Copy `.github/workflows/cleanup.yml`
+from METIS_ESAAA into the instance, set the secrets `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` and `METIS_BOT_PASSWORD`
+(a `service` account made with `tools/make_auth_import.mjs`), and set `project.repo` in config.json. The cleanup runs nightly;
+admins can also start it from ⚙ Réglages with a fine-grained GitHub token (Actions: read & write on that repo).
+
 ## After the workshop
 `tools/freeze.mjs <id>` → set `"backend": "static"` → set `public: true` / commit.
 

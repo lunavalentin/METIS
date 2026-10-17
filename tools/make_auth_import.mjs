@@ -1,7 +1,7 @@
 // Build a `firebase auth:import` file from accounts.csv — no service-account key needed, only `firebase login`.
 //   deno run -A --config tools/deno.json tools/make_auth_import.mjs accounts.csv <emailDomain>
 //   firebase auth:import auth_import_PRIVATE.json --hash-algo=BCRYPT --project <firebaseProjectId>
-// accounts.csv: username,displayName,role[,uid][,password]. Optional uid = update that existing account in place
+// accounts.csv: username,displayName,role[,uid][,password]; role = student | instructor | admin | service (bots, e.g. cleanup). Optional uid = update that existing account in place
 // (new email/password/name, same id); optional password = use it as is. --words → easy passwords "ciel4821miel".
 // Writes auth_import_PRIVATE.json and credentials_PRIVATE.csv in the
 // current folder: keep both out of git. The role becomes a custom claim ({"role": ...}) that firestore.rules reads.
@@ -31,7 +31,7 @@ const head = lines[0].split(',').map(s => s.trim());
 const rows = lines.slice(1).map(l => Object.fromEntries(l.split(',').map((v, i) => [head[i], v.trim()])));
 const users = [], creds = ['username,displayName,role,password'];
 for (const { username, displayName, role = 'student', uid: id, password: given } of rows) {
-  if (!['student', 'instructor', 'admin'].includes(role)) throw new Error(`bad role for ${username}: ${role}`);
+  if (!['student', 'instructor', 'admin', 'service'].includes(role)) throw new Error(`bad role for ${username}: ${role}`);
   const pw = given || password();
   users.push({
     localId: id || uid(),

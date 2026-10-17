@@ -156,5 +156,20 @@
   "lim_adminTooBig": "Even for admins, the maximum is {max} per file.",
   "lim_adminHint": "Admin: you can upload heavier or longer files, up to {max} MB.",
   "networkError": "Connection dropped during upload (3 attempts). Check the network and try again.",
-  "addVideoLink": "Video (link)"
+  "addVideoLink": "Video (link)",
+  "cleanupTitle": "Storage cleanup",
+  "cleanupHint": "A file deleted on the site stays on Cloudinary until the cleanup: automatic every night (around 3 am), or right away with the button below. Only files older than 1 h that are no longer used are erased.",
+  "cleanupNever": "No cleanup has run yet.",
+  "cleanupLast": "Last cleanup: {date} — {deleted} file(s) erased, {mb} MB freed · {used} in use / {stored} stored.",
+  "githubToken": "GitHub token (for the “Clean now” button)",
+  "githubTokenHint": "Fine-grained token limited to the {repo} repository, permission “Actions: read and write”. Readable by admins only.",
+  "tokenSaved": "•••••• (saved — leave empty to keep)",
+  "githubTokenMissing": "Add a GitHub token first (field above).",
+  "cleanNow": "Clean now",
+  "cleanDry": "Dry run",
+  "confirmClean": "Permanently erase from Cloudinary every file the site no longer uses?",
+  "cleanStarted": "Cleanup started, about 1 minute…",
+  "cleanDone": "Cleanup finished.",
+  "cleanSlow": "The cleanup is taking longer than expected: see the Actions tab of the GitHub repository.",
+  "cleanFailed": "The cleanup could not be started"
 }

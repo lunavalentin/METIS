@@ -161,14 +161,22 @@ function confirmDialog(message, okLabel, { danger = false } = {}) {
 
 // Admin settings: file storage (Cloudinary, kept in Firestore so it is not public) and class-only / public switch.
 async function showSettings() {
-  const [settings, project] = await Promise.all([state.backend.getSettings(), state.backend.getProject()]);
-  const c = settings.cloudinary || {};
-  dialog(`
+  const [settings, project, admin, report] = await Promise.all([state.backend.getSettings(), state.backend.getProject(),
+    state.backend.getAdmin('settings').catch(() => ({})), state.backend.getAdmin('cleanup').catch(() => ({}))]);
+  const c = settings.cloudinary || {}, repo = state.config.project.repo;
+  const form = dialog(`
     <h2>${t('settings')}</h2>
     <h3 class="section-title">${t('storageTitle')}</h3>
     <p class="hint small">${t('storageHint')}</p>
     <label>${t('cloudName')}<input name="cloudName" value="${esc(c.cloudName || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. dxyz12345"></label>
     <label>${t('uploadPreset')}<input name="uploadPreset" value="${esc(c.uploadPreset || '')}" autocapitalize="none" spellcheck="false" placeholder="ex. metis_esaaa"></label>
+    ${repo ? `<h3 class="section-title">${t('cleanupTitle')}</h3>
+    <p class="hint small">${t('cleanupHint')}</p>
+    <p class="cleanup-report">${cleanupLine(report)}</p>
+    <label>${t('githubToken')}<input name="githubToken" type="password" autocomplete="off" placeholder="${admin.githubToken ? t('tokenSaved') : 'github_pat_…'}"></label>
+    <p class="hint small">${t('githubTokenHint').replace('{repo}', esc(repo))}</p>
+    <div class="row-actions"><button type="button" class="grad" data-clean="live">${t('cleanNow')}</button><button type="button" data-clean="dry">${t('cleanDry')}</button></div>
+    <p class="hint small clean-status" aria-live="polite"></p>` : ''}
     <h3 class="section-title">${t('visibilityTitle')}</h3>
     <label class="check"><input type="checkbox" name="public" ${project?.public ? 'checked' : ''}> ${t('projectPublic')}</label>
     <p class="hint small">${t('projectPublicHint')}</p>
@@ -177,6 +185,8 @@ async function showSettings() {
     async fd => {
       const cloudinary = { cloudName: String(fd.get('cloudName')).trim(), uploadPreset: String(fd.get('uploadPreset')).trim() };
       await state.backend.saveSettings({ cloudinary });
+      const tok = String(fd.get('githubToken') || '').trim();
+      if (tok) await state.backend.saveAdmin('settings', { githubToken: tok });
       const pub = fd.get('public') === 'on';
       if (!!project?.public !== pub) {
         if (pub && !(await confirmDialog(t('confirmPublic'), t('projectPublic')))) return false;
@@ -184,6 +194,43 @@ async function showSettings() {
       }
       state.config.uploadSettings = cloudinary;
     });
+  form.querySelectorAll('[data-clean]').forEach(b => (b.onclick = () => runCleanup(form, repo, b.dataset.clean === 'dry', admin)));
+}
+
+function cleanupLine(r) {
+  if (!r?.lastRun) return t('cleanupNever');
+  const mb = ((Number(r.freedBytes) || 0) / 1048576).toFixed(1);
+  return t('cleanupLast').replace('{date}', fmtDate(r.lastRun)).replace('{deleted}', r.deleted ?? 0).replace('{mb}', mb)
+    .replace('{stored}', r.stored ?? 0).replace('{used}', r.referenced ?? 0) + (r.dryRun ? ` (${t('cleanDry').toLowerCase()})` : '')
+    + (r.errors?.length ? ` — ⚠ ${esc(r.errors.join(' · '))}` : '');
+}
+
+// Starts .github/workflows/cleanup.yml through the GitHub API (admin-only token), then waits for the bot's report in Firestore.
+async function runCleanup(form, repo, dry, admin) {
+  const status = form.querySelector('.clean-status'), say = m => (status.textContent = m);
+  const token = String(form.elements.githubToken.value || '').trim() || admin.githubToken;
+  if (!token) return say(t('githubTokenMissing'));
+  if (!dry && !(await confirmDialog(t('confirmClean'), t('cleanNow')))) return;
+  form.querySelectorAll('[data-clean]').forEach(b => (b.disabled = true));
+  const started = Date.now();
+  try {
+    const r = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/cleanup.yml/dispatches`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' },
+      body: JSON.stringify({ ref: 'main', inputs: { dry_run: dry, trigger: `${dry ? 'dry-run' : 'admin'}: ${state.user.displayName}` } }),
+    });
+    if (r.status !== 204) throw new Error(`GitHub ${r.status}: ${(await r.text()).slice(0, 160)}`);
+    if (form.elements.githubToken.value) await state.backend.saveAdmin('settings', { githubToken: token });
+    say(t('cleanStarted'));
+    for (let i = 0; i < 60; i++) {                       // up to ~5 min
+      await new Promise(res => setTimeout(res, 5000));
+      const rep = await state.backend.getAdmin('cleanup').catch(() => ({}));
+      const when = toDate(rep.lastRun);
+      if (when && when.getTime() > started - 5000) { form.querySelector('.cleanup-report').innerHTML = cleanupLine(rep); say(t('cleanDone')); return; }
+      say(`${t('cleanStarted')} ${Math.round((Date.now() - started) / 1000)} s`);
+    }
+    say(t('cleanSlow'));
+  } catch (e) { console.warn(e); say(`${t('cleanFailed')} (${e.message})`); }
+  finally { form.querySelectorAll('[data-clean]').forEach(b => (b.disabled = false)); }
 }
 
 async function confirmLogout() {
