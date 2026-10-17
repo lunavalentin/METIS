@@ -54,7 +54,6 @@ ok('tail trim with a noise floor at −54 dB', tr.lengthS > 0.45 && tr.lengthS <
 // multichannel: same alignment on all channels
 const mc = processIR({ sampleRate: fs, channels: [h, Float32Array.from(h, v => 0.5 * v)] }, { align: true, normalize: true });
 ok('4ch/2ch: same cut on every channel', mc.snd.channels[0].length === mc.snd.channels[1].length);
-if (globalThis.failed) throw new Error('tests failed');
 
 // --- Ambisonics: a 4-channel (AmbiX W,Y,Z,X) IR must keep its channel count, its order and the ratios between channels ---
 {
@@ -75,5 +74,14 @@ if (globalThis.failed) throw new Error('tests failed');
     const pk = out.channels.reduce((m, c) => Math.max(m, c.reduce((a, v) => Math.max(a, Math.abs(v)), 0)), 0);
     ok(`${label}: one common gain (loudest channel at −1 dBFS)`, Math.abs(20 * Math.log10(pk) + 1) < 0.01, `(${(20 * Math.log10(pk)).toFixed(2)} dBFS)`);
   }
+}
+
+// --- tail-cut sensitivity: a larger margin above the noise floor must cut earlier (monotonic), 0 dB keeps the most ---
+{
+  const noisy = { sampleRate: fs, channels: [Float32Array.from(h, v => v + 2e-3 * rnd())] };
+  const lens = [0, 3, 6, 10, 20].map(m => trimTail(noisy, 10, m).lengthS);
+  ok('trim sensitivity is monotonic (0, 3, 6, 10, 20 dB)', lens.every((v, i) => i === 0 || v <= lens[i - 1]) && lens[0] > lens[4], `(kept ${lens.map(v => v.toFixed(2)).join(' ≥ ')} s)`);
+  // RT 0.8 s → 60 dB per 0.8 s → +10 dB of margin should cut ≈ 0.8 × 7/60 ≈ 0.09 s earlier than +3 dB
+  ok('+10 dB cuts ≈ 0.09 s before +3 dB', Math.abs((lens[1] - lens[3]) - 0.093) < 0.04, `(${(lens[1] - lens[3]).toFixed(3)} s earlier)`);
 }
 if (globalThis.failed) throw new Error('tests failed');

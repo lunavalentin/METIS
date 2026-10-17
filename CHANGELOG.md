@@ -1,5 +1,15 @@
 # METIS change log
 
+## 2026-10-17 — v0.9.5 tail-cut sensitivity slider
+
+- `trimTail(snd, fadeMs, marginDb)`: the cut happens where the 10 ms energy comes within `marginDb` of the noise floor (was a fixed +3 dB).
+  IR form → Options avancées: **"Sensibilité de la coupe"**, 0–20 dB (default 3), shown when "Couper la fin" is ticked or a deconvolution
+  is chosen. Moving it refreshes the preview after 350 ms, and the preview says "coupe à +N dB du bruit". It is stored in `irInfo.processing.trimMarginDb`.
+- Tests: 21/21. New: monotonic — 0/3/6/10/20 dB keep 0.74 ≥ 0.60 ≥ 0.55 ≥ 0.47 ≥ 0.33 s. +10 dB cuts 0.130 s before +3 dB
+  (predicted ≈ 0.09 s from RT 0.8 s; the gap comes from envelope fluctuations in the noisy tail; tolerance 0.04 s).
+- Browser (mock, METIS-sweep recording): +0 dB → 2.12 s, +3 dB → 2.01 s, +15 dB → 1.64 s; T30 stays 0.80 s; slider hidden when
+  there is no trim and no deconvolution. No errors.
+
 ## 2026-10-17 — v0.9.4 360° detection and photo ↔ 360° switch
 
 - Live data: Luna's "360 Google" (4096×2048, 2:1) was stored as type `photo`, because the type came only from the button ("+ Photo").

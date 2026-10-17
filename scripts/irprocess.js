@@ -97,10 +97,11 @@ export function removePredelay(snd, preMs = 2) {
   return { snd: { ...snd, channels: snd.channels.map(c => c.slice(start)) }, removedMs: (start / snd.sampleRate) * 1000 };
 }
 
-// Cut where the decay meets the noise floor (+3 dB), then fade the last 10 ms. Returns { snd, lengthS }.
+// Cut where the decay comes within `marginDb` of the noise floor (default +3 dB; higher = earlier cut), then fade the last 10 ms.
+// Returns { snd, lengthS }.
 // The noise floor is the median 10 ms energy over the last 20 % of the signal *that is not digital silence*
 // (deconvolution leaves long near-zero stretches at the end, which would otherwise make the floor look far too low).
-export function trimTail(snd, fadeMs = 10) {
+export function trimTail(snd, fadeMs = 10, marginDb = 3) {
   const fs = snd.sampleRate, w = Math.max(1, Math.round(0.01 * fs)), c = snd.channels[0];
   const env = []; for (let i = 0; i + w <= c.length; i += w) { let e = 0; for (let j = 0; j < w; j++) e += c[i + j] ** 2; env.push(e / w); }
   if (env.length < 10) return { snd, lengthS: c.length / fs };
@@ -110,7 +111,8 @@ export function trimTail(snd, fadeMs = 10) {
   const tail = env.slice(from, last + 1).sort((a, b) => a - b);
   const noise = tail[Math.floor(tail.length / 2)] || env[pk] * 1e-14;
   let k = pk;
-  while (k < env.length && env[k] > noise * 2) k++;                  // 2× power ≈ +3 dB
+  const thr = noise * 10 ** (marginDb / 10);
+  while (k < env.length && env[k] > thr) k++;
   const end = Math.min(c.length, (k + 1) * w), f = Math.min(end, Math.round(fadeMs / 1000 * fs));
   const channels = snd.channels.map(ch => { const y = ch.slice(0, end); for (let i = 0; i < f; i++) y[end - 1 - i] *= i / f; return y; });
   return { snd: { ...snd, channels }, lengthS: end / fs };
@@ -139,7 +141,7 @@ export function processIR(snd, opts) {
     const shift = opts.deconv?.kind === 'ess' ? (Math.round(opts.deconv.params.duration * snd.sampleRate) - 1) / snd.sampleRate * 1000 : 0;
     report.removedMs = Math.max(0, r.removedMs - shift);
   }
-  if (opts.trim || opts.deconv) { const r = trimTail(s); s = r.snd; report.steps.push('trim'); }
+  if (opts.trim || opts.deconv) { const r = trimTail(s, 10, opts.trimMarginDb ?? 3); s = r.snd; report.steps.push('trim'); report.trimMarginDb = opts.trimMarginDb ?? 3; }
   if (opts.normalize) { s = normalize(s); report.steps.push('normalize'); }
   report.lengthS = s.channels[0].length / s.sampleRate;
   return { snd: s, report };

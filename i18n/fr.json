@@ -229,5 +229,8 @@
   "panoDetectedRatio": "Cette image fait {w}×{h} (format 2:1) : c'est probablement une photo 360°.",
   "panoSwitch": "Enregistrer comme image 360°",
   "panoSwitchEdit": "Changer le type en image 360°",
-  "panoNotTwoToOne": "Cette image fait {w}×{h}, pas 2:1 : une image 360° équirectangulaire est deux fois plus large que haute. Elle risque de s'afficher déformée."
+  "panoNotTwoToOne": "Cette image fait {w}×{h}, pas 2:1 : une image 360° équirectangulaire est deux fois plus large que haute. Elle risque de s'afficher déformée.",
+  "proc_trimDb": "Sensibilité de la coupe : marge au-dessus du bruit",
+  "proc_trimDbHint": "0 dB = garder la queue jusqu'au bruit · 20 dB = couper tôt (queue plus courte).",
+  "proc_cutAt": "coupe à +{db} dB du bruit"
 }

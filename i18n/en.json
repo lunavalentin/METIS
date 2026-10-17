@@ -229,5 +229,8 @@
   "panoDetectedRatio": "This image is {w}×{h} (2:1): it is probably a 360° photo.",
   "panoSwitch": "Save it as a 360° image",
   "panoSwitchEdit": "Change the type to 360° image",
-  "panoNotTwoToOne": "This image is {w}×{h}, not 2:1: an equirectangular 360° image is twice as wide as it is tall. It may look distorted."
+  "panoNotTwoToOne": "This image is {w}×{h}, not 2:1: an equirectangular 360° image is twice as wide as it is tall. It may look distorted.",
+  "proc_trimDb": "Cut sensitivity: margin above the noise",
+  "proc_trimDbHint": "0 dB = keep the tail down to the noise · 20 dB = cut early (shorter tail).",
+  "proc_cutAt": "cut at +{db} dB above the noise"
 }

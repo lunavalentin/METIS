@@ -560,6 +560,9 @@ function showItemForm(type, existing = null, carry = null) {
       <label class="check"><input type="checkbox" name="pNormalize" checked> ${t('proc_normalize')}</label>
       <label class="check"><input type="checkbox" name="pAlign" checked> ${t('proc_align')}</label>
       <label class="check"><input type="checkbox" name="pTrim"> ${t('proc_trim')}</label>
+      <label class="trim-margin" hidden>${t('proc_trimDb')} <output>+3 dB</output>
+        <input type="range" name="pTrimDb" min="0" max="20" step="1" value="3"></label>
+      <p class="hint small trim-margin" hidden>${t('proc_trimDbHint')}</p>
       <label>${t('proc_deconv')}<select name="pDeconv">
         <option value="">${t('proc_none')}</option><option value="metis">${t('proc_metis')}</option>
         <option value="custom">${t('proc_custom')}</option><option value="reference">${t('proc_reference')}</option></select></label>
@@ -634,6 +637,7 @@ function showItemForm(type, existing = null, carry = null) {
   // --- IR processing (deconvolve → align → trim → normalise), applied to the chosen file before upload ---
   const procOpts = () => ({
     normalize: !!form.elements.pNormalize?.checked, align: !!form.elements.pAlign?.checked, trim: !!form.elements.pTrim?.checked,
+    trimMarginDb: Number(form.elements.pTrimDb?.value ?? 3),
     deconvKind: pDeconv?.value || '',
     params: pDeconv?.value === 'custom' ? { f1: Number(form.elements.pF1.value), f2: Number(form.elements.pF2.value), duration: Number(form.elements.pDur.value) } : METIS_SWEEP,
     ref: form.elements.pRef?.files?.[0] || null,
@@ -651,16 +655,29 @@ function showItemForm(type, existing = null, carry = null) {
       if (!(o.params.f1 > 0 && o.params.f2 > o.params.f1 && o.params.duration > 0)) throw new Error(t('proc_badParams'));
       deconv = { kind: 'ess', params: o.params };
     }
-    const { snd, report } = processIR(await decodeSound(src), { deconv, align: o.align, trim: o.trim, normalize: o.normalize });
+    const { snd, report } = processIR(await decodeSound(src), { deconv, align: o.align, trim: o.trim, trimMarginDb: o.trimMarginDb, normalize: o.normalize });
     const file = new File([encodeWav(snd, 24)], src.name.replace(/\.[^.]+$/, '') + '_ri.wav', { type: 'audio/wav' });
     prepared = { file, original: src, check: await checkFile('ir', file, L), procKey: procKey(),
       procReport: { steps: report.steps, deconv: o.deconvKind || null, ...(o.deconvKind === 'custom' ? { sweep: o.params } : {}),
         ...(o.deconvKind === 'reference' ? { referenceFile: o.ref.name } : {}), removedMs: report.removedMs != null ? Math.round(report.removedMs * 10) / 10 : null, sourceFile: src.name } };
     const a = analyseIR(snd.channels[0], snd.sampleRate), f = v => (v == null || !isFinite(v) ? '—' : v.toFixed(2) + ' s');
     out.innerHTML = `<p class="ok">✓ ${t('proc_done')}: ${report.lengthS.toFixed(2)} s · ${snd.channels.length} ${t('proc_ch')} · ${snd.sampleRate} Hz`
-      + (report.removedMs != null ? ` · ${t('proc_removed').replace('{ms}', report.removedMs.toFixed(1))}` : '') + ` · T30 ${f(a.T30)} · EDT ${f(a.EDT)}</p>`
+      + (report.removedMs != null ? ` · ${t('proc_removed').replace('{ms}', report.removedMs.toFixed(1))}` : '')
+      + (report.trimMarginDb != null ? ` · ${t('proc_cutAt').replace('{db}', report.trimMarginDb)}` : '') + ` · T30 ${f(a.T30)} · EDT ${f(a.EDT)}</p>`
       + `<audio controls src="${URL.createObjectURL(file)}"></audio>`;
     showCheck();
+  }
+  // Tail-cut sensitivity: shown when the tail is cut (checkbox, or always after a deconvolution); moving it refreshes the preview.
+  const trimBox = form.elements.pTrim, trimDb = form.elements.pTrimDb;
+  if (trimBox && trimDb) {
+    const syncTrim = () => form.querySelectorAll('.trim-margin').forEach(el => (el.hidden = !(trimBox.checked || pDeconv?.value)));
+    trimBox.addEventListener('change', syncTrim); pDeconv?.addEventListener('change', syncTrim); syncTrim();
+    let timer = null;
+    trimDb.addEventListener('input', () => {
+      trimDb.previousElementSibling.textContent = `+${trimDb.value} dB`;
+      clearTimeout(timer);
+      if (prepared && form.querySelector('.ir-preview')?.innerHTML) timer = setTimeout(() => runProcessing().catch(err => console.warn(err)), 350);
+    });
   }
   form.querySelector('[data-preview]')?.addEventListener('click', async e => {
     e.target.disabled = true;
