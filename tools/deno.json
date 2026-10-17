@@ -1,1 +1,6 @@
-{ "imports": { "firebase-admin/": "npm:/firebase-admin@13.4.0/" } }
+{
+ "imports": {
+  "firebase-admin/": "npm:/firebase-admin@13.4.0/",
+  "bcryptjs": "npm:bcryptjs@2.4.3"
+ }
+}

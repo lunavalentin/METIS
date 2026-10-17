@@ -6,3 +6,4 @@ credentials_PRIVATE.csv
 Start.txt
 deno.lock
 tools/deno.lock
+auth_import_PRIVATE.json

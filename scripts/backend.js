@@ -47,7 +47,7 @@ async function firebaseBackend(config) {
         const profile = snap.exists() ? snap.data() : {};
         current = {
           uid: u.uid,
-          displayName: profile.displayName || u.email.split('@')[0],
+          displayName: profile.displayName || u.displayName || u.email.split('@')[0],
           role: token.claims.role || 'student',
           charterAcceptedAt: profile.charterAcceptedAt || null,
         };
