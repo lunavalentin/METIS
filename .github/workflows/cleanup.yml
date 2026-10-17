@@ -1,0 +1,27 @@
+# Delete Cloudinary files that no METIS project uses any more, project by project, each on its own Cloudinary account.
+# Nightly at 02:00 UTC, from the Actions tab, or from METIS ⚙ Réglages du projet → Stockage → "Nettoyer maintenant".
+# Secrets: METIS_PRIVATE_KEY (decrypts each project's Cloudinary keys), METIS_BOT_PASSWORD (account "nettoyage").
+name: Cleanup Cloudinary
+on:
+  schedule: [{ cron: '0 2 * * *' }]
+  workflow_dispatch:
+    inputs:
+      project: { description: 'Project id (empty = all projects)', type: string, default: '' }
+      dry_run: { description: 'Only list what would be deleted', type: boolean, default: false }
+      trigger: { description: 'Who asked (shown in the report)', type: string, default: 'actions-tab' }
+concurrency: { group: metis-cleanup, cancel-in-progress: false }
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Remove unused files
+        env:
+          METIS_PRIVATE_KEY: ${{ secrets.METIS_PRIVATE_KEY }}
+          METIS_BOT_PASSWORD: ${{ secrets.METIS_BOT_PASSWORD }}
+          PROJECT: ${{ inputs.project }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          TRIGGER: ${{ github.event_name == 'schedule' && 'nightly' || inputs.trigger }}
+        run: node tools/cleanup.mjs
