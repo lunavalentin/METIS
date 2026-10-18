@@ -354,8 +354,30 @@
       font-weight: 600; font-size: .8rem; box-shadow: var(--shadow); }
     .metis-tip::before { display: none; }
 
+    /* grid fields may shrink below their content (date inputs have a large minimum width) */
+    .limits-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .limits-row.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+    .limits-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .limits-row input, .limits-row select { min-width: 0; }
+
+    /* iPhone Safari zooms into any field whose text is under 16 px: keep form text at 16 px on touch screens */
+    @media (max-width: 640px), (pointer: coarse) {
+      input:not([type=checkbox]):not([type=range]):not([type=file]), select, textarea { font-size: 16px !important; }
+    }
+
     /* ---------- phones ---------- */
     @media (max-width: 640px) {
+      #top { gap: .3rem; padding-left: .6rem; padding-right: .4rem; }
+      .brand { flex: 1 1 auto; min-width: 0; overflow: hidden; gap: .45rem; }
+      .brand img { width: 28px; height: 28px; }
+      .brand-text { min-width: 0; }
+      #title { display: block; max-width: 100%; font-size: 1.15rem; letter-spacing: .12em; margin-right: 0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      /* admins: the project menu already shows the project name → give it the room */
+      body.has-switcher .brand-text { display: none; }
+      #switcher { flex: 1 1 auto; min-width: 0; max-width: none; }
+      #top > button { flex: none; }
+      #lang { padding: .5em .7em; }
       :root { --gutter: 10px; }
       #subtitle { display: none; }
       #panel { top: auto; left: 0; right: 0; bottom: 0; width: 100%; height: 74%; border-radius: var(--r-lg) var(--r-lg) 0 0;

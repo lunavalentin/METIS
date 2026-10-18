@@ -179,6 +179,7 @@ function renderHeader() {
   $('#back').onclick = () => showWorld();
   // Project switcher (super-admins).
   $('#switcher').hidden = !admin;
+  document.body.classList.toggle('has-switcher', admin);
   if (admin) {
     const opts = [...state.projects].sort((a, b2) => (tr(a.title) || a.id).localeCompare(tr(b2.title) || b2.id));
     $('#switcher').innerHTML = `<option value="__world">🌍 ${esc(t('worldMap'))}</option>`
