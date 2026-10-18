@@ -118,6 +118,7 @@ async function openProject(pid) {
   if (ticket !== navTicket) return;
   teardownMaps(); notice('');
   state.view = 'project';
+  if (state.config?.project.id !== pid) state.activityFilter = '';
   state.config = toProjectConfig(state.site, doc, pid);
   state.config.uploadSettings = uploadSettings;
   state.config.canWrite = !!member && !b.readOnly && (u.role === 'admin' || state.config.project.status === 'active');
@@ -151,7 +152,8 @@ function startWatching() {
 // Shared with admin.js (project creation, settings, accounts, cleanup, export).
 export const ctx = { state, $, esc, t, tr, getLang, dialog: (...a) => dialog(...a), confirmDialog: (...a) => confirmDialog(...a),
   openProject: (...a) => openProject(...a), showWorld: (...a) => showWorld(...a), renderHeader: (...a) => renderHeader(...a),
-  notice: (...a) => notice(...a), fmtDate: (...a) => fmtDate(...a), toDate: (...a) => toDate(...a), store };
+  notice: (...a) => notice(...a), fmtDate: (...a) => fmtDate(...a), toDate: (...a) => toDate(...a), store,
+  openPoint: (...a) => openPoint(...a) };
 
 // ---------- header ----------
 function renderHeader() {

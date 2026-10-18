@@ -27,7 +27,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if isSuper() || (signedIn() && request.auth.uid == uid);
       allow create, delete: if isSuper();
-      allow update: if isSuper() || (signedIn() && request.auth.uid == uid && onlyChanges(['displayName', 'charterAcceptedAt']));
+      allow update: if isSuper() || (signedIn() && request.auth.uid == uid && onlyChanges(['displayName', 'charterAcceptedAt', 'lastSeenAt']));
     }
 
     // Site-wide admin settings (e.g. the GitHub token for "clean now").
@@ -53,6 +53,11 @@ service cloud.firestore {
         allow write: if isSuper();
       }
       // Generated account lists (with passwords) and cleanup reports.
+      // Activity log: every member action appends one entry (own uid, server time); only super-admins read it.
+      match /activity/{eid} {
+        allow create: if canWrite(pid) && request.resource.data.uid == request.auth.uid && request.resource.data.at == request.time;
+        allow read, delete: if isSuper();
+      }
       match /admin/{doc} {
         allow read: if isSuper();
         allow write: if isSuper() || (isService() && doc == 'cleanup');

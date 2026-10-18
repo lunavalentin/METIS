@@ -1,5 +1,20 @@
 # METIS change log
 
+## 2026-10-18 — v1.1 activity log, last logins
+
+- **Activité** tab (⚙, admins only): every action is recorded in `projects/<id>/activity` (place created / edited / moved /
+  deleted; content added / edited / file replaced / hidden / unhidden / deleted; project settings; accounts created / reset /
+  deleted), with who and when, newest first (last 300), a person filter, and a link that opens the place.
+  Item details are read before the change, so an edit followed by a deletion still shows the title. Recorded from 18 Oct 2026.
+- **Comptes**: last login per account ("jamais" if never), number of actions (click → Activité filtered to that person),
+  and an "n of N accounts have logged in" line. The last login is `users/<uid>.lastSeenAt`, written at each login / reload.
+- Rules: members may create activity entries only under their own uid with the server time; only super-admins read them;
+  users may update their own `lastSeenAt`.
+- Placement editor: number boxes for rotation (°) and scale (% of the starting size); no metre value. Admin panel layout fixes
+  (sample labels, aligned rows, solid header/tabs/save bar, shorter labels).
+- Tests (live, temporary project, removed afterwards): student reads activity 403, writes an entry as someone else 403,
+  sets own lastSeenAt 200; browser 5/5 (last login, 5 actions, filtered timeline newest first, link opens the place). Editor 7/7.
+
 ## 2026-10-17 — v1.0 one site, many projects
 
 Luna's new architecture (see MIGRATION.md for the full plan, decisions and test counts):

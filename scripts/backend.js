@@ -27,6 +27,7 @@ async function staticBackend() {
     addPoint: readOnly, updatePoint: readOnly, deletePoint: readOnly,
     addItem: readOnly, updateItem: readOnly, addPointType: readOnly, setHidden: readOnly, deleteItem: readOnly,
     createAuthUser: readOnly, withUserSession: readOnly, setUserDoc: readOnly, deleteUserDoc: readOnly,
+    listProjectUsers: async () => [], listActivity: async () => [], logActivity() {},
   };
 }
 
@@ -46,6 +47,24 @@ async function firebaseBackend(config) {
   const denied = e => e?.code === 'permission-denied';
 
   let current = null; // { uid, username, displayName, role, project, charterAcceptedAt }
+
+  // Activity log (projects/{pid}/activity): one entry per action, fire-and-forget (a failed log never blocks the action).
+  const log = (action, data = {}) => {
+    if (!pid || !current) return;
+    F.addDoc(F.collection(db, 'projects', pid, 'activity'), {
+      at: F.serverTimestamp(), uid: current.uid, username: current.username, displayName: current.displayName, action,
+      ...Object.fromEntries(Object.entries(data).filter(([, v]) => v !== undefined)),
+    }).catch(e => console.warn('activity log', e.code));
+  };
+  const itemInfo = async (pointId, itemId) => {
+    const s = await F.getDoc(F.doc(db, 'projects', pid, 'points', pointId, 'items', itemId)).catch(() => null);
+    const d = s?.exists() ? s.data() : {};
+    return { itemType: d.type, itemTitle: d.meta?.title || d.meta?.text?.slice(0, 60) || '' };
+  };
+  const pointName = async pointId => {
+    const s = await F.getDoc(F.doc(db, 'projects', pid, 'points', pointId)).catch(() => null);
+    return s?.exists() ? s.data().name : '';
+  };
 
   // Secondary Firebase app with in-memory auth: lets a super-admin create accounts or act as one account
   // (password reset, deletion) without leaving their own session.
@@ -75,6 +94,8 @@ async function firebaseBackend(config) {
           project: profile.project || null,
           charterAcceptedAt: profile.charterAcceptedAt || null,
         };
+        // Last connection (members only; super-admins have no users doc).
+        if (snap?.exists()) F.updateDoc(F.doc(db, 'users', u.uid), { lastSeenAt: F.serverTimestamp() }).catch(() => {});
         cb(current);
       });
     },
@@ -103,7 +124,10 @@ async function firebaseBackend(config) {
       if ((await F.getDoc(F.doc(db, 'projects', id))).exists()) throw new Error(`PROJECT_EXISTS`);
       await F.setDoc(F.doc(db, 'projects', id), { ...doc, createdAt: F.serverTimestamp(), createdBy: current.uid });
     },
-    updateProject(patch) { return F.updateDoc(P(), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid }); },
+    async updateProject(patch) {
+      await F.updateDoc(P(), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid });
+      log('project.update', { fields: Object.keys(patch) });
+    },
     setPublic(isPublic) { return F.updateDoc(P(), { public: !!isPublic }); },
 
     // projects/{pid}/private/settings — { cloudinary: { cloudName, uploadPreset } }: members need it to upload.
@@ -138,6 +162,17 @@ async function firebaseBackend(config) {
       return secondary(async sa => { const cred = await A.signInWithEmailAndPassword(sa, emailOf(username), password); return fn(cred.user, A); });
     },
     setUserDoc(uid, data) { return F.setDoc(F.doc(db, 'users', uid), data, { merge: true }); },
+    // Accounts of the current project with their last connection (super-admins).
+    async listProjectUsers() {
+      const s = await F.getDocs(F.query(F.collection(db, 'users'), F.where('project', '==', pid)));
+      return s.docs.map(d => ({ uid: d.id, ...d.data() }));
+    },
+    // Latest activity entries of the current project (super-admins).
+    async listActivity(n = 300) {
+      const s = await F.getDocs(F.query(F.collection(db, 'projects', pid, 'activity'), F.orderBy('at', 'desc'), F.limit(n)));
+      return s.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+    logActivity: (action, data) => log(action, data),
     deleteUserDoc(uid) { return F.deleteDoc(F.doc(db, 'users', uid)); },
 
     // ---------- places & items of the current project ----------
@@ -168,16 +203,21 @@ async function firebaseBackend(config) {
         floor, name, meta, types: [], hidden: false,
         createdBy: current.uid, createdByName: current.displayName, createdAt: F.serverTimestamp(),
       });
+      log('point.create', { pointId: ref.id, pointName: name });
       return ref.id;
     },
     // Rename, move, change level or edit the place's own metadata (owner or staff, see firestore.rules).
-    updatePoint(pointId, patch) {
-      return F.updateDoc(F.doc(pointsCol(), pointId), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid });
+    async updatePoint(pointId, patch) {
+      await F.updateDoc(F.doc(pointsCol(), pointId), { ...patch, updatedAt: F.serverTimestamp(), updatedBy: current.uid });
+      const fields = Object.keys(patch);
+      log(fields.every(k => ['lat', 'lng', 'x', 'y'].includes(k)) ? 'point.move' : 'point.update', { pointId, pointName: patch.name || await pointName(pointId), fields });
     },
     // Firestore does not cascade: delete every item first, then the place. Media files are removed from the
     // project's cloud by the cleanup job (tools/cleanup.mjs).
     async deletePoint(pointId) {
+      const name = await pointName(pointId);
       const snap = await F.getDocs(itemsCol(pointId));
+      log('point.delete', { pointId, pointName: name, items: snap.size });
       await Promise.all(snap.docs.map(d => F.deleteDoc(d.ref)));
       await F.deleteDoc(F.doc(pointsCol(), pointId));
     },
@@ -188,13 +228,27 @@ async function firebaseBackend(config) {
         createdAt: F.serverTimestamp(), hidden: false,
       });
       // Keep a summary of media types on the point so the map can colour markers without extra reads.
-      await F.updateDoc(F.doc(pointsCol(), pointId), { types: F.arrayUnion(item.type) });
+      const [, name] = await Promise.all([F.updateDoc(F.doc(pointsCol(), pointId), { types: F.arrayUnion(item.type) }), pointName(pointId)]);
+      log('item.create', { pointId, pointName: name, itemId: ref.id, itemType: item.type, itemTitle: item.meta?.title || item.meta?.text?.slice(0, 60) || '' });
       return ref.id;
     },
     // Keep the place's media-type summary (pin colours) right when an item changes kind (e.g. photo → 360°).
     addPointType(pointId, type) { return F.updateDoc(F.doc(pointsCol(), pointId), { types: F.arrayUnion(type) }); },
-    updateItem(pointId, itemId, patch) { return F.updateDoc(F.doc(itemsCol(pointId), itemId), patch); },
-    setHidden(pointId, itemId, hidden) { return F.updateDoc(F.doc(itemsCol(pointId), itemId), { hidden, hiddenBy: hidden ? current.uid : null }); },
-    deleteItem(pointId, itemId) { return F.deleteDoc(F.doc(itemsCol(pointId), itemId)); },
+    // Item details are read before the change (the item may be deleted right after), the new title taken from the patch.
+    async updateItem(pointId, itemId, patch) {
+      const [info, name] = await Promise.all([itemInfo(pointId, itemId), pointName(pointId)]);
+      await F.updateDoc(F.doc(itemsCol(pointId), itemId), patch);
+      log(patch.media ? 'item.replace' : 'item.update', { pointId, pointName: name, itemId, ...info, itemType: patch.type || info.itemType, itemTitle: patch.meta?.title || info.itemTitle });
+    },
+    async setHidden(pointId, itemId, hidden) {
+      const [info, name] = await Promise.all([itemInfo(pointId, itemId), pointName(pointId)]);
+      await F.updateDoc(F.doc(itemsCol(pointId), itemId), { hidden, hiddenBy: hidden ? current.uid : null });
+      log(hidden ? 'item.hide' : 'item.unhide', { pointId, pointName: name, itemId, ...info });
+    },
+    async deleteItem(pointId, itemId) {
+      const [info, name] = await Promise.all([itemInfo(pointId, itemId), pointName(pointId)]);
+      await F.deleteDoc(F.doc(itemsCol(pointId), itemId));
+      log('item.delete', { pointId, pointName: name, itemId, ...info });
+    },
   };
 }

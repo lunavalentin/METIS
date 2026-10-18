@@ -163,6 +163,7 @@ export async function generateAccounts(ctx, pid, nStudents, nInstructors, say = 
     if (error) break;
   }
   await b.saveAdmin('accounts', { accounts: list });
+  if (created.length) b.logActivity('account.create', { count: created.length, target: created.map(a => a.username).join(', ') });
   return { created, all: list, error };
 }
 
@@ -171,7 +172,7 @@ function downloadAccounts(pid, list) {
 }
 
 // ---------- project settings panel ----------
-const TABS = ['general', 'base', 'accounts', 'storage', 'archive'];
+const TABS = ['general', 'base', 'accounts', 'activity', 'storage', 'archive'];
 
 export async function projectAdmin(ctx, tab = 'general') {
   const { state, $, t } = ctx;
@@ -187,7 +188,7 @@ export async function projectAdmin(ctx, tab = 'general') {
   panel.querySelectorAll('[data-atab]').forEach(btn => (btn.onclick = () => projectAdmin(ctx, btn.dataset.atab)));
   const body = panel.querySelector('.admin-body');
   body.innerHTML = '<p class="hint small">…</p>';
-  try { await ({ general: tabGeneral, base: tabBase, accounts: tabAccounts, storage: tabStorage, archive: tabArchive })[tab](ctx, body); }
+  try { await ({ general: tabGeneral, base: tabBase, accounts: tabAccounts, activity: tabActivity, storage: tabStorage, archive: tabArchive })[tab](ctx, body); }
   catch (e) { console.error(e); body.innerHTML = `<p class="warn">${ctx.esc(e.message)}</p>`; }
 }
 export function closeAdmin(ctx) { const p = ctx.$('#admin'); p.hidden = true; p.innerHTML = ''; document.body.classList.remove('admin-open'); }
@@ -376,16 +377,22 @@ function placePlan(ctx, floorId, collect) {
 // --- Comptes ---
 async function tabAccounts(ctx, body) {
   const { t, esc, state } = ctx, pid = state.config.project.id, b = state.backend;
-  const list = (await b.getAdmin('accounts')).accounts || [];
+  const [adm, users, acts] = await Promise.all([b.getAdmin('accounts'), b.listProjectUsers().catch(() => []), b.listActivity(1000).catch(() => [])]);
+  const list = adm.accounts || [];
+  const seen = Object.fromEntries(users.map(u => [u.uid, u.lastSeenAt]));
+  const count = {}; for (const a of acts) count[a.uid] = (count[a.uid] || 0) + 1;
+  const ago = v => { const d = ctx.toDate(v); return d ? `<span title="${esc(ctx.fmtDate(v))}">${esc(relTime(d, ctx))}</span>` : `<span class="hint">${t('acc_never')}</span>`; };
   const order = { instructor: 0, student: 1 };
   const sorted = [...list].sort((a, c) => order[a.role] - order[c.role] || a.username.localeCompare(c.username));
   body.innerHTML = `
     <p class="hint small">${t('acc_hint')}</p>
     <div class="row-actions"><button type="button" data-csv ${list.length ? '' : 'disabled'}>${t('acc_download')}</button><button type="button" data-showpw>${t('acc_showPw')}</button></div>
-    <table class="acc-table"><thead><tr><th>${t('username')}</th><th>${t('password')}</th><th>${t('acc_role')}</th><th></th></tr></thead><tbody>
+    <p class="hint small">${t('acc_seenSummary').replace('{n}', sorted.filter(a => seen[a.uid]).length).replace('{total}', sorted.length)}</p>
+    <table class="acc-table"><thead><tr><th>${t('username')}</th><th>${t('password')}</th><th>${t('acc_role')}</th><th>${t('acc_lastSeen')}</th><th title="${esc(t('acc_actionsHint'))}">${t('acc_actions')}</th><th></th></tr></thead><tbody>
     ${sorted.map(a => `<tr data-u="${esc(a.username)}"><td>${esc(a.username)}</td><td><code class="pw" data-pw="${esc(a.password)}">••••••</code></td>
-      <td>${t('role_' + a.role)}</td><td><button type="button" data-reset title="${esc(t('acc_reset'))}">↻</button><button type="button" data-delacc class="danger-text" title="${esc(t('delete'))}">✕</button></td></tr>`).join('')
-      || `<tr><td colspan="4" class="hint small">${t('acc_none')}</td></tr>`}
+      <td>${t('role_' + a.role)}</td><td>${ago(seen[a.uid])}</td><td>${count[a.uid] ? `<button type="button" class="linkish" data-acts="${esc(a.uid)}">${count[a.uid]}</button>` : '<span class="hint">0</span>'}</td>
+      <td class="nowrap"><button type="button" data-reset title="${esc(t('acc_reset'))}">↻</button><button type="button" data-delacc class="danger-text" title="${esc(t('delete'))}">✕</button></td></tr>`).join('')
+      || `<tr><td colspan="6" class="hint small">${t('acc_none')}</td></tr>`}
     </tbody></table>
     <h3 class="section-title">${t('acc_add')}</h3>
     <div class="limits-row two"><label>${t('np_students')}<input type="number" min="0" max="200" value="0" data-n="student"></label>
@@ -394,6 +401,7 @@ async function tabAccounts(ctx, body) {
     <p class="hint small acc-status" aria-live="polite"></p>`;
   const q = s => body.querySelector(s), say = m => (q('.acc-status').textContent = m);
   q('[data-csv]').onclick = () => downloadAccounts(pid, sorted);
+  body.querySelectorAll('[data-acts]').forEach(x => (x.onclick = () => { ctx.state.activityFilter = x.dataset.acts; projectAdmin(ctx, 'activity'); }));
   q('[data-showpw]').onclick = () => body.querySelectorAll('.pw').forEach(c => (c.textContent = c.textContent.startsWith('•') ? c.dataset.pw : '••••••'));
   q('[data-gen]').onclick = async e => {
     const ns = Number(q('[data-n=student]').value) || 0, ni = Number(q('[data-n=instructor]').value) || 0;
@@ -414,6 +422,7 @@ async function tabAccounts(ctx, body) {
         const pw = makePassword();
         await b.withUserSession(acc.username, acc.password, (user, A) => A.updatePassword(user, pw));
         acc.password = pw; await b.saveAdmin('accounts', { accounts: list });
+        b.logActivity('account.reset', { target: acc.username });
         projectAdmin(ctx, 'accounts');
       } catch (err) { say(`${acc.username}: ${err.code || err.message}`); }
     };
@@ -424,9 +433,51 @@ async function tabAccounts(ctx, body) {
       } catch (err) { if (err.code !== 'auth/invalid-credential' && err.code !== 'auth/user-not-found') { say(`${acc.username}: ${err.code || err.message}`); return; } }
       await b.deleteUserDoc(acc.uid).catch(() => {});
       await b.saveAdmin('accounts', { accounts: list.filter(a => a !== acc) });
+      b.logActivity('account.delete', { target: acc.username });
       projectAdmin(ctx, 'accounts');
     };
   });
+}
+
+function relTime(d, ctx) {
+  const s = Math.round((Date.now() - d.getTime()) / 1000), rtf = new Intl.RelativeTimeFormat(ctx.getLang(), { numeric: 'auto' });
+  if (s < 60) return rtf.format(0, 'second');
+  if (s < 3600) return rtf.format(-Math.round(s / 60), 'minute');
+  if (s < 86400) return rtf.format(-Math.round(s / 3600), 'hour');
+  if (s < 30 * 86400) return rtf.format(-Math.round(s / 86400), 'day');
+  return ctx.fmtDate(d);
+}
+
+// --- Activité: who created / edited / uploaded / deleted what ---
+async function tabActivity(ctx, body) {
+  const { t, esc, state } = ctx, b = state.backend;
+  const acts = await b.listActivity(300);
+  const people = [...new Map(acts.map(a => [a.uid, a.displayName || a.username])).entries()].sort((x, y) => String(x[1]).localeCompare(String(y[1])));
+  const filter = state.activityFilter || '';
+  const shown = acts.filter(a => !filter || a.uid === filter);
+  const what = a => {
+    const type = a.itemType ? t('type_' + a.itemType) : '';
+    const title = a.itemTitle ? ` « ${esc(a.itemTitle)} »` : '';
+    const place = a.pointName ? `<button type="button" class="linkish" data-open="${esc(a.pointId)}">${esc(a.pointName)}</button>` : '';
+    return t('act_' + a.action).replace('{type}', esc(type)).replace('{title}', title).replace('{place}', place)
+      .replace('{target}', esc(a.target || '')).replace('{count}', a.count ?? '').replace('{fields}', esc((a.fields || []).map(f => { const l = t('fld_' + f); return l.startsWith('fld_') ? f : l; }).join(', ')));
+  };
+  body.innerHTML = `
+    <p class="hint small">${t('act_hint')}</p>
+    <label>${t('act_person')}<select data-filter><option value="">${t('act_everyone')} (${acts.length})</option>
+      ${people.map(([uid, name]) => `<option value="${esc(uid)}" ${uid === filter ? 'selected' : ''}>${esc(name)} (${acts.filter(a => a.uid === uid).length})</option>`).join('')}</select></label>
+    <ol class="activity">${shown.map(a => `<li><span class="when" title="${esc(ctx.fmtDate(a.at))}">${esc(a.at ? relTime(ctx.toDate(a.at), ctx) : '…')}</span>
+      <strong>${esc(a.displayName || a.username)}</strong> ${what(a)}</li>`).join('') || `<li class="hint small">${t('act_none')}</li>`}</ol>
+    ${acts.length >= 300 ? `<p class="hint small">${t('act_more')}</p>` : ''}`;
+  body.querySelector('[data-filter]').onchange = e => { state.activityFilter = e.target.value; projectAdmin(ctx, 'activity'); };
+  body.querySelectorAll('[data-open]').forEach(x => (x.onclick = () => {
+    const p = state.points.find(pp => pp.id === x.dataset.open);
+    if (!p) { x.replaceWith(Object.assign(document.createElement('span'), { textContent: x.textContent + ' ' + t('act_gone'), className: 'hint' })); return; }
+    closeAdmin(ctx);
+    if (state.map && p.floor && state.map.floor !== p.floor) { state.map.setFloor(p.floor); ctx.renderHeader(); }
+    if (state.map && p.lat != null) state.map.map.setView([p.lat, p.lng], Math.max(state.map.map.getZoom(), 19));
+    ctx.openPoint(p);
+  }));
 }
 
 // --- Stockage: cloud settings, key replacement, cleanup ---
