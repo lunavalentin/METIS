@@ -201,31 +201,37 @@ export class MetisMap {
     panel.innerHTML = `
       <strong>${t('alignTitle')} · ${escapeHtml(tr(ov.metis.label) || layerId)}</strong>
       <p class="hint small">${t('alignHint')}</p>
-      <label>${t('alignRotation')} <output data-o="rot"></output>°<input type="range" data-k="rot" min="-180" max="180" step="0.25"></label>
-      <label>${t('alignWidth')} <output data-o="w"></output> m<input type="range" data-k="w" min="5" max="800" step="0.25"></label>
+      <label>${t('alignRotation')}<span class="num-row"><input type="range" data-k="rot" min="-180" max="180" step="0.5"><input type="number" data-n="rot" min="-360" max="360" step="0.1"><span>°</span></span></label>
+      <label>${t('alignScale')}<span class="num-row"><input type="range" data-k="sc" min="10" max="400" step="0.5"><input type="number" data-n="sc" min="1" max="5000" step="0.1"><span>%</span></span></label>
       <label>${t('alignOpacity')}<input type="range" data-k="op" min="0.1" max="1" step="0.05"></label>
       ${editing ? `<div class="row-actions"><button type="button" data-cancel>${t('cancel')}</button><button type="button" class="grad" data-save>${t('save')}</button></div>`
         : `<textarea readonly rows="4"></textarea><button type="button" data-copy>${t('alignCopy')}</button>`}`;
     const q = sel => panel.querySelector(sel);
     const orig = { placement: structuredClone(ov.metis.placement), opacity: ov.options.opacity };
-    q('[data-k=rot]').value = p.rotationDeg; q('[data-k=w]').value = p.widthM; q('[data-k=op]').value = ov.options.opacity;
+    // Scale = % of the size when the editor opened (no metre value shown); rotation in degrees. Slider and box stay in sync.
+    const startW = p.widthM;
+    const set = (k, v) => { q(`[data-k=${k}]`).value = v; q(`[data-n=${k}]`).value = v; };
+    set('rot', p.rotationDeg); set('sc', 100); q('[data-k=op]').value = ov.options.opacity;
     const r6 = v => Math.round(v * 1e6) / 1e6;
     const apply = () => {
-      p.rotationDeg = Number(q('[data-k=rot]').value);
-      p.widthM = Number(q('[data-k=w]').value);
+      p.rotationDeg = Number(q('[data-n=rot]').value) || 0;
+      p.widthM = Math.round(startW * (Number(q('[data-n=sc]').value) || 100) / 100 * 100) / 100;
       p.heightM = Math.round(p.widthM * ratio() * 100) / 100;
       const ll = handle.getLatLng(); p.center = [r6(ll.lat), r6(ll.lng)];
       ov.options.rotationDeg = p.rotationDeg;
       ov.setBounds(L.latLngBounds(placementBounds(p)));
       ov.setOpacity(Number(q('[data-k=op]').value));
-      q('[data-o=rot]').textContent = p.rotationDeg; q('[data-o=w]').textContent = p.widthM;
       if (!editing) q('textarea').value = JSON.stringify({ placement: p });
     };
     const finish = () => {
       handle.remove(); panel.remove();
       this.baseLayers.Satellite.remove(); if (usedPlan) this.baseLayers.Plan.addTo(this.map);
     };
-    panel.querySelectorAll('input').forEach(i => i.addEventListener('input', apply));
+    for (const k of ['rot', 'sc']) {
+      q(`[data-k=${k}]`).addEventListener('input', e => { q(`[data-n=${k}]`).value = e.target.value; apply(); });
+      q(`[data-n=${k}]`).addEventListener('input', e => { if (e.target.value !== '') { q(`[data-k=${k}]`).value = e.target.value; apply(); } });
+    }
+    q('[data-k=op]').addEventListener('input', apply);
     handle.on('drag', apply);
     img.onload = apply;
     q('[data-copy]')?.addEventListener('click', () => navigator.clipboard?.writeText(q('textarea').value));

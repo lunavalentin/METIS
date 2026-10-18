@@ -109,7 +109,6 @@
   "switchLang": "Passer en français",
   "alignTitle": "Align",
   "alignRotation": "Rotation",
-  "alignWidth": "Width",
   "alignOpacity": "Opacity",
   "alignCopy": "Copy JSON",
   "openCavern": "Listen in the space · CAVERN",
@@ -336,7 +335,7 @@
   "base_photoMB": "Photo (MB)",
   "base_panoMB": "360° (MB)",
   "base_soundMB": "Sound (MB)",
-  "alignHint": "Drag the centre point, then adjust rotation, width and opacity. Satellite base to line up with the roofs.",
+  "alignHint": "Drag the centre point, then adjust rotation, scale and opacity (slider or exact value). Satellite base to line up with the roofs.",
   "arc_status": "Project status",
   "arc_isActive": "The project is active: participants can contribute.",
   "arc_isArchived": "The project is archived: read-only for everyone (except admins).",
@@ -353,5 +352,6 @@
   "exp_data": "Reading the project data…",
   "exp_site": "Copying the site…",
   "exp_media": "Downloading files: {n} / {total}",
-  "exp_zip": "Compressing the ZIP…"
+  "exp_zip": "Compressing the ZIP…",
+  "alignScale": "Scale"
 }

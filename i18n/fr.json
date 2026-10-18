@@ -109,7 +109,6 @@
   "switchLang": "Switch to English",
   "alignTitle": "Alignement",
   "alignRotation": "Rotation",
-  "alignWidth": "Largeur",
   "alignOpacity": "Opacité",
   "alignCopy": "Copier le JSON",
   "openCavern": "Écouter dans l'espace · CAVERN",
@@ -336,7 +335,7 @@
   "base_photoMB": "Photo (Mo)",
   "base_panoMB": "360° (Mo)",
   "base_soundMB": "Son (Mo)",
-  "alignHint": "Glissez le point central, puis ajustez rotation, largeur et opacité. Fond satellite pour s'aligner sur les toits.",
+  "alignHint": "Glissez le point central, puis ajustez rotation, échelle et opacité (curseur ou valeur exacte). Fond satellite pour s'aligner sur les toits.",
   "arc_status": "État du projet",
   "arc_isActive": "Le projet est actif : les participant·es peuvent contribuer.",
   "arc_isArchived": "Le projet est archivé : consultation seule pour tout le monde (sauf les admins).",
@@ -353,5 +352,6 @@
   "exp_data": "Lecture des données du projet…",
   "exp_site": "Copie du site…",
   "exp_media": "Téléchargement des fichiers : {n} / {total}",
-  "exp_zip": "Compression du ZIP…"
+  "exp_zip": "Compression du ZIP…",
+  "alignScale": "Échelle"
 }
