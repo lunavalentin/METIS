@@ -1,3 +1,6 @@
+> **Note (2026-10-17):** this is the original design (one copy of the site per workshop). METIS is now **one site for many
+> projects** — see [MIGRATION.md](MIGRATION.md) and [README.md](README.md). The data model, audio engine and UI parts below still apply.
+
 # METIS — Mapping Environments through Traces, Images and Sound
 
 Design draft v0.1 — 2026-10-16 — Luna Valentin

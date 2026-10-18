@@ -7,11 +7,11 @@ map of public projects; a logged-in user sees only their own project, and logs o
 ESAAA is dropped: Luna will rebuild it from scratch as a test project.
 
 ## Status
-- [x] 0. Clean-up. Old ESAAA Firestore data deleted (backup: `METIS_ESAAA_private/backup_esaaa_firestore_2026-10-17.json`).
+- [x] 0. Clean-up. Old ESAAA Firestore data deleted (backup: `METIS_private/backup_esaaa_firestore_2026-10-17.json`).
       32 student/instructor accounts deleted. Kept: `luna`, `celess` (admin claim), `nettoyage` (service), now `@metis.users`
-      (credentials in `METIS_ESAAA_private/mig/keep.csv`).
+      (credentials in `METIS_private/admin_accounts_PRIVATE.csv`).
 - [x] 0b. Secrets. RSA-OAEP 3072 key pair: public key → to embed in the site; private key → GitHub secret `METIS_PRIVATE_KEY`
-      (METIS repo) + `METIS_ESAAA_private/metis_secrets_PRIVATE_KEY.pem`. `METIS_BOT_PASSWORD` set on METIS.
+      (METIS repo) + `METIS_private/metis_secrets_PRIVATE_KEY.pem`. `METIS_BOT_PASSWORD` set on METIS.
       Browser-encrypt → decrypt round-trip tested.
 - [x] 1. Rules (`firestore.rules`, deployed). Super = claim `admin`; bot = claim `service`; members = `users/{uid}.project/role`;
       `projects/{pid}`: get (member/public) vs list (only `public == true`); `private` (members), `secrets` (bot only),
@@ -44,7 +44,7 @@ ESAAA is dropped: Luna will rebuild it from scratch as a test project.
       Firebase/Cloudinary/CDNs/Fonts blocked (11/11: plan, photo, IR analysis + playback, samples, text, fonts).
 - [x] 9. Published: GitHub Pages on the METIS repo → https://lunavalentin.github.io/METIS/. Live end-to-end 8/8 (real referer:
       world map, student login → own project, create place, text, photo upload to the project's Cloudinary, logout, admin panel).
-      METIS_ESAAA workflows (sync, cleanup) disabled; its repo and site are left as they are (unused).
+      METIS_ESAAA: workflows disabled, secrets + Pages removed, local copy removed (assets kept in Codes/METIS_assets/esaaa-2026).
       All test projects and test accounts deleted (2026-10-17): Firestore has no project; Auth has luna, celess, nettoyage.
 
 ## Left for Luna
