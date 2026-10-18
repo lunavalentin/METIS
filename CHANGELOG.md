@@ -1,5 +1,25 @@
 # METIS change log
 
+## 2026-10-18 — v1.1.2 global audit + phone fixes
+
+**Audit results**
+- Unit tests 36/36 (IR analysis 9, IR processing 21, cleanup 6); `deno lint` clean (20 files); translations complete (398 keys FR = EN).
+- Live Firestore rules: 34/34 checks (visitor, student own/other project, instructor, archived project, cleanup bot, secrets,
+  activity log, 1 000-character texts, per-place limits, users documents).
+- No secret in the public repo or its history (private keys, GitHub tokens, Cloudinary URLs); `config.json` holds only public values.
+  User-provided names reach HTML only through escaping or as plain text (title / textContent).
+- Phone (emulated iPhone 390×844, touch, live site): 33/33. Visitor world map → public project → place bottom sheet and tabs;
+  student: tap on the map to add a place, photo upload, text and IR forms; admin: header, the 6 settings tabs, new-project form.
+  Checks on every screen: nothing outside the screen, form text ≥ 16 px, header items not overlapping.
+
+**Fixed**
+- Form text was 12.8–15.2 px → iPhone Safari zoomed in on every field: now 16 px on touch screens / phones.
+- Phone header: the admin project menu covered the title and pushed the avatar off the edge → on phones the menu replaces the
+  title (it already shows the project name); long titles stay on one line (ellipsis).
+- Date fields overflowed their column in narrow two-column rows → grid columns can shrink (`minmax(0, 1fr)`).
+- Desktop: the "Ajouter un lieu" button was half hidden under an open side panel → centred in the visible map area.
+- Not testable here: real iOS Safari / Android Chrome (emulation only), real camera capture and microphone on a phone.
+
 ## 2026-10-18 — v1.1.1 rotated plans stick to the map while zooming
 
 - Rotated plans slid away from the map **during** zoom animations (pinch / scroll / buttons), then jumped back at the end.

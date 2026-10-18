@@ -365,6 +365,12 @@
       input:not([type=checkbox]):not([type=range]):not([type=file]), select, textarea { font-size: 16px !important; }
     }
 
+    /* desktop: keep the "add a place" button in the visible part of the map when a side panel is open */
+    @media (min-width: 641px) {
+      body.panel-open #add { left: calc((100% - min(430px, 100% - 2 * var(--gutter)) - var(--gutter)) / 2); }
+      body.admin-open #add { left: calc((100% - min(520px, 100% - 2 * var(--gutter)) - var(--gutter)) / 2); }
+    }
+
     /* ---------- phones ---------- */
     @media (max-width: 640px) {
       #top { gap: .3rem; padding-left: .6rem; padding-right: .4rem; }
