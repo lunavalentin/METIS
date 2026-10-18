@@ -6,12 +6,16 @@ const L = window.L;
 
 // Image overlay rotated around its centre. Rotation is applied in screen space, which is fine
 // at building scale (Web Mercator is conformal). Re-applied after Leaflet resets the transform.
+// Leaflet positions and zoom-animates the image with "translate(...) scale(...)" from its top-left corner
+// (transform-origin 0 0), so the rotation is added inside that transform: move to the centre, rotate, move back.
+// (Rotating with transform-origin "center" made the plan slide away during zoom animations: up to 1 356 px measured.)
 const RotatedOverlay = L.ImageOverlay.extend({
   _applyRotation() {
     const img = this._image;
     if (!img || !this.options.rotationDeg) return;
-    img.style.transformOrigin = 'center center';
-    img.style[L.DomUtil.TRANSFORM] += ` rotate(${this.options.rotationDeg}deg)`;
+    const w = img.offsetWidth || parseFloat(img.style.width) || 0, h = img.offsetHeight || parseFloat(img.style.height) || 0;
+    img.style.transformOrigin = '0 0';
+    img.style[L.DomUtil.TRANSFORM] += ` translate(${w / 2}px, ${h / 2}px) rotate(${this.options.rotationDeg}deg) translate(${-w / 2}px, ${-h / 2}px)`;
   },
   _reset() { L.ImageOverlay.prototype._reset.call(this); this._applyRotation(); },
   _animateZoom(e) { L.ImageOverlay.prototype._animateZoom.call(this, e); this._applyRotation(); },

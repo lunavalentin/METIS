@@ -1,5 +1,14 @@
 # METIS change log
 
+## 2026-10-18 — v1.1.1 rotated plans stick to the map while zooming
+
+- Rotated plans slid away from the map **during** zoom animations (pinch / scroll / buttons), then jumped back at the end.
+  Cause: the rotation used `transform-origin: center`, while Leaflet animates image overlays with `translate(…) scale(…)` from
+  the top-left corner. Now the rotation is added inside Leaflet's transform (origin 0 0: move to the centre, rotate, move back).
+- Measured with a test page against a Leaflet marker at the plan centre, every animation frame, zooms +1 +1 −2 −1:
+  before ≤ 571 px off during the animation (0–1 px at rest); after ≤ 1 px during and at rest, for normal and line-drawing plans.
+  Plan editor test 7/7 still passing.
+
 ## 2026-10-18 — v1.1 activity log, last logins
 
 - **Activité** tab (⚙, admins only): every action is recorded in `projects/<id>/activity` (place created / edited / moved /
