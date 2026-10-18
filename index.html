@@ -212,7 +212,8 @@
       width: min(520px, calc(100% - 2 * var(--gutter))); overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-lg);
       padding: 0 1rem 1.25rem; background: var(--surface-solid); animation: slide .28s cubic-bezier(.2, .8, .2, 1); }
     #admin header { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem;
-      padding: 1rem 1rem .75rem; margin: 0 -1rem; background: linear-gradient(var(--surface-solid) 70%, transparent); }
+      padding: 1rem 1rem .75rem; margin: 0 -1rem; background: var(--surface-solid); }
+    #admin .tabs { position: sticky; top: 4.6rem; z-index: 2; box-shadow: 0 -.8rem 0 var(--surface-solid), 0 .5rem .6rem var(--surface-solid); background: #24252c; }
     #admin h2 { margin: .1rem 0 0; font-family: var(--display); font-size: 1.6rem; font-weight: 600; }
     #admin label { display: block; margin: .6rem 0; font-size: .8rem; color: var(--muted); }
     #admin input:not([type=checkbox]):not([type=file]):not([type=range]), #admin textarea, #admin select { display: block; width: 100%; margin-top: .3rem;
@@ -226,7 +227,13 @@
       font-weight: 500; font-size: .85rem !important; cursor: pointer; margin: .3rem 0 !important; }
     .upload-btn:hover { background: var(--line); }
     #admin.busy { pointer-events: none; opacity: .6; }
-    .sticky-save { position: sticky; bottom: -1.25rem; padding: .7rem 0; background: linear-gradient(transparent, var(--surface-solid) 35%); }
+    .sticky-save { position: sticky; bottom: -1.25rem; z-index: 3; margin: 1rem -1rem 0 !important; padding: .7rem 1rem 1.2rem;
+      background: var(--surface-solid); border-top: 1px solid var(--line); }
+    #admin .limits-row { align-items: end; }
+    #admin .level .row-actions, #admin .sample .row-actions { margin-top: .4rem; }
+    #admin .level .level-plan + .row-actions { border-top: 1px solid var(--line); padding-top: .5rem; }
+    #admin .sample audio { margin-bottom: .2rem; }
+    #admin textarea[data-charter] { min-height: 9rem; }
     .acc-table { width: 100%; border-collapse: collapse; font-size: .85rem; margin: .6rem 0; }
     .acc-table th { text-align: left; color: var(--muted); font-weight: 500; font-size: .75rem; padding: .3rem; }
     .acc-table td { padding: .3rem; border-top: 1px solid var(--line); } .acc-table td button { padding: .2em .55em; margin-left: .2rem; }

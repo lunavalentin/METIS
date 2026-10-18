@@ -268,9 +268,9 @@
   "np_instructors": "Instructors",
   "np_cloud": "File storage (the project’s Cloudinary)",
   "np_cloudHint": "Each project uses its own free Cloudinary account: cloud name and unsigned upload preset (Settings → Upload → Upload presets).",
-  "np_apiKey": "API Key (Cloudinary → Settings → API Keys)",
+  "np_apiKey": "API Key",
   "np_apiSecret": "API Secret",
-  "np_keysHint": "Needed to clean up deleted files automatically. Encrypted in your browser; nobody can read them back afterwards.",
+  "np_keysHint": "Cloudinary → Settings → API Keys. Needed to clean up deleted files automatically. Encrypted in your browser; nobody can read them back afterwards.",
   "np_test": "Test the connection",
   "np_testing": "Testing…",
   "np_testNeeds": "Fill in at least the cloud name and the preset.",
@@ -305,7 +305,7 @@
   "adm_storage": "Storage",
   "adm_archive": "Archive",
   "adm_exportJson": "Export as JSON (without keys)",
-  "adm_keysKeep": "leave empty to keep the current keys",
+  "adm_keysKeep": "unchanged if empty",
   "base_view": "Home view",
   "base_viewHint": "Frame the map the way it should open, then save.",
   "base_current": "Current",
@@ -353,5 +353,7 @@
   "exp_site": "Copying the site…",
   "exp_media": "Downloading files: {n} / {total}",
   "exp_zip": "Compressing the ZIP…",
-  "alignScale": "Scale"
+  "alignScale": "Scale",
+  "base_sampleFr": "Name (FR)",
+  "base_sampleEn": "Name (EN)"
 }

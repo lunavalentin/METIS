@@ -267,14 +267,14 @@ async function tabBase(ctx, body) {
     <h3 class="section-title">${t('base_samples')}</h3>
     <p class="hint small">${t('base_samplesHint')}</p>
     <div class="samples">${samples.map((s, i) => `<div class="sample" data-i="${i}"><audio controls preload="none" src="${esc(s.url)}"></audio>
-      <div class="limits-row two"><input data-k="fr" value="${L(ctx, s.label?.fr)}" placeholder="FR"><input data-k="en" value="${L(ctx, s.label?.en)}" placeholder="EN"></div>
-      <button type="button" data-delsample class="danger-text">${t('delete')}</button></div>`).join('')}</div>
+      <div class="limits-row two"><label>${t('base_sampleFr')}<input data-k="fr" value="${L(ctx, s.label?.fr)}"></label><label>${t('base_sampleEn')}<input data-k="en" value="${L(ctx, s.label?.en)}"></label></div>
+      <div class="row-actions"><button type="button" data-delsample class="danger-text">${t('delete')}</button></div></div>`).join('')}</div>
     <label class="upload-btn">+ ${t('base_addSample')}<input type="file" data-sample accept=".mp3,.wav,audio/mpeg,audio/wav" hidden></label>
 
     <h3 class="section-title">${t('base_charter')}</h3>
     <p class="hint small">${t('base_charterHint')}</p>
-    <label>FR<textarea data-charter="fr" rows="5">${esc(d.charter?.fr || '')}</textarea></label>
-    <label>EN<textarea data-charter="en" rows="5">${esc(d.charter?.en || '')}</textarea></label>
+    <label>FR<textarea data-charter="fr" rows="8">${esc(d.charter?.fr || '')}</textarea></label>
+    <label>EN<textarea data-charter="en" rows="8">${esc(d.charter?.en || '')}</textarea></label>
 
     <h3 class="section-title">${t('base_limits')}</h3>
     <div class="limits-row">${['images', 'sounds', 'irs', 'texts'].map(g => `<label>${t('lim_' + g)}<input type="number" min="0" max="50" data-lim="${g}" value="${lim.perPlace[g]}"></label>`).join('')}</div>
