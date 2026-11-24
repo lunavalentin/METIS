@@ -1,5 +1,18 @@
 # METIS change log
 
+## 2026-11-24 — v1.1.3 copy a sound's link (for Strudel)
+
+**Added**
+- "Copier le lien / Copy link" button on sound cards (Sons) and impulse-response cards (Acoustique), shown only to logged-in
+  members: copies the file's Cloudinary address to the clipboard, the button reads "Lien copié ✓" for ~2 s. If the browser
+  refuses the clipboard, a box shows the link to copy by hand. Cloudinary serves files with `Access-Control-Allow-Origin: *`,
+  so the link works directly in Strudel, e.g. `samples({ metis: ['<link>'] })` then `s("metis")`.
+
+**Tested** (headless Chrome, local static copy with a fake member; the live login was not used)
+- 11/11 for sounds and 11/11 for IRs: no button for visitors or after logout, none on photo/video/360°/text cards, copied
+  URL is the file's URL, confirmation and reset, cross-origin fetch of the file (200, ACAO *), clipboard-refused fallback,
+  no console errors. Unit tests 36/36; translations complete (402 keys FR = EN); `main.js` lints clean.
+
 ## 2026-10-18 — v1.1.2 global audit + phone fixes
 
 **Audit results**

@@ -485,6 +485,8 @@ function actions(it) {
     if (linkedIR(it, visibleItems())) btns.push(`<button data-act="cavern" data-id="${it.id}" class="grad">${t('openCavern')}</button>`);
   }
   if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="grad">${t('listenHere')}</button>`);
+  // Sound file link for live coding (e.g. Strudel samples()); members only, so the raw links are not handed to every visitor.
+  if (u && (it.type === 'audio' || it.type === 'ir') && it.media?.url) btns.push(`<button data-act="copylink" data-id="${it.id}" title="${esc(t('copyLinkHint'))}">${t('copyLink')}</button>`);
   if (u && state.config.canWrite) {
     if (canEditItem(u, it)) btns.push(`<button data-act="edit" data-id="${it.id}">${t('edit')}</button>`);
     if (isStaff(u)) btns.push(`<button data-act="${it.hidden ? 'unhide' : 'hide'}" data-id="${it.id}">${t(it.hidden ? 'unhide' : 'hide')}</button>`);
@@ -521,6 +523,17 @@ async function itemAction(act, id) {
   if (act === 'expand') openViewer(it);
   if (act === 'cavern') openViewer(it, linkedIR(it, visibleItems()));
   if (act === 'listen') { state.acousticsIR = id; state.tab = 'acoustics'; renderPanel(); }
+  if (act === 'copylink') copyLink(it?.media?.url, id);
+}
+
+async function copyLink(url, id) {
+  if (!url) return;
+  const btn = document.querySelector(`[data-act="copylink"][data-id="${CSS.escape(id)}"]`);
+  try { await navigator.clipboard.writeText(url); }
+  catch { window.prompt(t('copyLinkManual'), url); return; }   // clipboard blocked (old browser, permissions): let the user copy by hand
+  if (!btn) return;
+  btn.textContent = t('linkCopied');
+  clearTimeout(btn._reset); btn._reset = setTimeout(() => (btn.textContent = t('copyLink')), 1800);
 }
 
 // ---------- add / edit item ----------
