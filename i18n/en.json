@@ -200,7 +200,7 @@
   "proc_trim": "Cut the tail where the decay meets the noise, with a fade",
   "proc_deconv": "Deconvolution (if the file is a recorded sweep)",
   "proc_none": "None — the file is already an impulse response",
-  "proc_metis": "METIS sweep (100 Hz – 8 kHz, 1.5 s, provided sample)",
+  "proc_metis": "METIS sweep (100 Hz – 8 kHz, 10 s, provided sample)",
   "proc_custom": "Exponential sweep: other parameters…",
   "proc_reference": "Original sweep file…",
   "proc_f1": "Start frequency (Hz)",

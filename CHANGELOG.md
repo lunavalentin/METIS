@@ -1,5 +1,33 @@
 # METIS change log
 
+## 2026-11-24 — v1.1.4 10 s METIS sweep (was 1.5 s) + tail-trim fix after sweep deconvolution
+
+**Changed**
+- METIS sweep preset is now 100 Hz–8 kHz over **10 s** (was 1.5 s): `METIS_SWEEP` in `scripts/irprocess.js`, labels
+  `proc_metis` FR/EN. `assets/samples/sweep.wav` regenerated with `essSweep(METIS_SWEEP, 48000)` (same formula and 20 ms fades,
+  10 s + 0.5 s silence, 16-bit, peak 0.89 as before). The old 1.5 s file matched the old preset exactly (correlation 1.0), and is
+  kept as `METIS_assets/esaaa-2026/sounds/samples/sweep_1.5s.wav`; a take made with it can still be processed with
+  "Exponential sweep: other parameters…" = 100 / 8000 / 1.5.
+- Requested by Luna for the ESAAA workshop (2 s felt too short in a room).
+
+**Fixed**
+- After ESS deconvolution, the result is now cut to the recording's length before alignment and tail trim. Beyond that point
+  the inverse filter slides off the end of the recording and the noise fades out, so the trim estimated the noise floor too low
+  and kept seconds of noise. Pre-existing (1.5 s sweep with room noise: 2.63 s kept, 5.35 s with 3 s of extra recording), much
+  worse with 10 s (8.79 s / 11.63 s). Now 1.00 / 0.99 s (1.5 s sweep) and 1.11 / 1.14 s (10 s sweep).
+
+**Tests**
+- `tests/irprocess.test.mjs`: the "tail trimmed before the end" bound now follows the sweep length (was a fixed 2.8 s, tied to
+  the 3.1 s result of the 1.5 s sweep); the synthetic take now keeps recording 1 s after the sweep, as a real take does (without
+  that, the new crop leaves no noise-only stretch and the cut falls at 1.18 s inside a −88 dB tail); new check "ESS with room
+  noise: trim cuts where the decay meets the noise" (0.5–1.6 s; it failed before the fix with 8.69 s).
+- Unit tests 37/37 (IR analysis 9, IR processing 22, cleanup 6). ESS result vs true IR: correlation 1.0000, T30 0.799 vs 0.799 s.
+- New asset `METIS_assets/esaaa-2026/sounds/test_recordings/sweep_METIS10s_recorded_RT0.8s.wav` (10 s sweep through a simulated
+  RT 0.8 s room, 30 ms pre-delay): through `processIR` with the METIS preset → 1.67 s kept, 27.8 ms pre-delay removed,
+  T30 0.793 s, EDT 0.832 s.
+- Not tested: the browser path on the live site (needs the push), and a real recording of the 10 s file in a room.
+- Pre-existing lint warning left as is: unused `i` in the trim test (`tests/irprocess.test.mjs`).
+
 ## 2026-11-24 — v1.1.3 copy a sound's link (for Strudel)
 
 **Added**

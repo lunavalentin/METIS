@@ -30,7 +30,7 @@ function spectrum(x, n) { const re = new Float64Array(n), im = new Float64Array(
 
 // ---------- exponential sine sweep (Farina) ----------
 // x(t) = sin(2π f1 L (e^{t/L} − 1)), L = T / ln(f2/f1), with 20 ms raised-cosine fades — identical to assets/samples/sweep.wav.
-export const METIS_SWEEP = { f1: 100, f2: 8000, duration: 1.5 };
+export const METIS_SWEEP = { f1: 100, f2: 8000, duration: 10 };
 export function essSweep({ f1, f2, duration }, fs, fadeMs = 20) {
   const n = Math.round(duration * fs), L = duration / Math.log(f2 / f1), x = new Float32Array(n);
   for (let i = 0; i < n; i++) x[i] = Math.sin(2 * Math.PI * f1 * L * (Math.exp(i / fs / L) - 1));
@@ -129,7 +129,12 @@ export function normalize(snd, peakDb = -1) {
 // opts: { deconv: null | { kind: 'ess', params } | { kind: 'reference', reference }, align, trim, normalize }
 export function processIR(snd, opts) {
   let s = snd; const report = { steps: [] };
-  if (opts.deconv?.kind === 'ess') { s = deconvolveESS(s, opts.deconv.params); report.steps.push('deconv'); }
+  if (opts.deconv?.kind === 'ess') {
+    s = deconvolveESS(s, opts.deconv.params); report.steps.push('deconv');
+    // Keep only the part where the whole inverse filter overlaps the recording (output samples < recording length). Beyond it the
+    // filter slides off the end and the noise fades out, which made the tail trim estimate the floor too low and keep seconds of noise.
+    const n = snd.channels[0].length; s = { ...s, channels: s.channels.map(c => c.subarray(0, n)) };
+  }
   if (opts.deconv?.kind === 'reference') {
     if (opts.deconv.reference.sampleRate !== s.sampleRate) throw new Error(`sample rates differ (${opts.deconv.reference.sampleRate} vs ${s.sampleRate} Hz)`);
     s = deconvolveReference(s, opts.deconv.reference); report.steps.push('deconv');

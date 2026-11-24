@@ -19,7 +19,8 @@ function fftConv(a, b) {
   fft(ar, ai, true); return Float32Array.from(ar.subarray(0, a.length + b.length - 1));
 }
 const sweep = essSweep(METIS_SWEEP, fs);
-const rec = fftConv(sweep, h); for (let i = 0; i < rec.length; i++) rec[i] += 1e-4 * rnd();
+// A real take keeps recording a little after the sweep (the METIS file itself ends with 0.5 s of silence): 1 s here.
+const rec = new Float32Array(sweep.length + h.length - 1 + fs); rec.set(fftConv(sweep, h)); for (let i = 0; i < rec.length; i++) rec[i] += 1e-4 * rnd();
 const snd = { sampleRate: fs, channels: [rec] };
 
 const ok = (name, cond, detail) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name} ${detail ?? ''}`); if (!cond) globalThis.failed = true; };
@@ -43,8 +44,17 @@ for (const [label, deconv] of [['ESS (METIS parameters)', { kind: 'ess', params:
   ok(`${label}: peak −1 dBFS`, Math.abs(y.reduce((m, v) => Math.max(m, Math.abs(v)), 0) - 10 ** (-1 / 20)) < 1e-3);
   ok(`${label}: onset kept ≈ 2 ms`, Math.abs(y.findIndex(v => Math.abs(v) > 0.5) / fs * 1000 - 2) < 0.5, `(${(y.findIndex(v => Math.abs(v) > 0.5) / fs * 1000).toFixed(2)} ms)`);
   // Deconvolution gains a lot of SNR: the decay stays clean down to ≈ −114 dB at 1.6 s (end of the true IR; measured, see CHANGELOG),
-  // then sinks into a −115…−150 dB floor. So: the cut must not fall inside the decay (≥ 1.3 s) and must remove part of the 3.1 s result.
-  ok(`${label}: tail trimmed after the decay, before the end`, report.lengthS >= 1.3 && report.lengthS <= 2.8, `(${report.lengthS.toFixed(2)} s kept of ≈ 3.1 s)`);
+  // then sinks into a −115…−150 dB numerical floor. So: the cut must not fall inside the decay (≥ 1.3 s) and must remove at least
+  // 1 s of the result, whose length follows the sweep (recording length ≈ sweep + 1.63 s; 3.1 s with the old 1.5 s sweep).
+  const resultS = rec.length / fs;
+  ok(`${label}: tail trimmed after the decay, before the end`, report.lengthS >= 1.3 && report.lengthS <= resultS - 1, `(${report.lengthS.toFixed(2)} s kept of ≈ ${resultS.toFixed(1)} s)`);
+}
+// Realistic room noise in the recording (rms 0.01 ≈ −40 dB under the sweep): after deconvolution the decay meets the noise well
+// before the IR ends, so the trim must cut inside 0.5–1.6 s (not keep the noise for seconds).
+{
+  const noisy = Float32Array.from(fftConv(sweep, h), v => v + 1e-2 * rnd());
+  const { report } = processIR({ sampleRate: fs, channels: [noisy] }, { deconv: { kind: 'ess', params: METIS_SWEEP }, align: true, trim: true, normalize: true });
+  ok('ESS with room noise: trim cuts where the decay meets the noise', report.lengthS >= 0.5 && report.lengthS <= 1.6, `(${report.lengthS.toFixed(2)} s kept)`);
 }
 const { removedMs } = removePredelay({ sampleRate: fs, channels: [h] });
 ok('pre-delay removal on the true IR', Math.abs(removedMs - 28) < 0.5, `(${removedMs.toFixed(2)} ms removed, expected 28)`);

@@ -200,7 +200,7 @@
   "proc_trim": "Couper la fin quand la décroissance atteint le bruit, avec un fondu",
   "proc_deconv": "Déconvolution (si le fichier est un sweep enregistré)",
   "proc_none": "Aucune — le fichier est déjà une réponse impulsionnelle",
-  "proc_metis": "Sweep METIS (100 Hz – 8 kHz, 1,5 s, échantillon fourni)",
+  "proc_metis": "Sweep METIS (100 Hz – 8 kHz, 10 s, échantillon fourni)",
   "proc_custom": "Sweep exponentiel : autres paramètres…",
   "proc_reference": "Fichier du sweep d'origine…",
   "proc_f1": "Fréquence de départ (Hz)",
