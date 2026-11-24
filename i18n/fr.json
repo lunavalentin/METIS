@@ -87,7 +87,7 @@
   "f_linkIR": "Réponse impulsionnelle liée (CAVERN)",
   "listenHere": "Écouter cette acoustique",
   "copyLink": "Copier le lien",
-  "copyLinkHint": "Copie l’adresse du fichier son (pour Strudel, etc.)",
+  "copyLinkHint": "Copie l’adresse du fichier (pour Strudel, etc.)",
   "linkCopied": "Lien copié ✓",
   "copyLinkManual": "Copiez le lien :",
   "noIR": "Aucune réponse impulsionnelle ici pour l'instant. Ajoutez-en une pour écouter l'acoustique de ce lieu.",

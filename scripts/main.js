@@ -485,8 +485,8 @@ function actions(it) {
     if (linkedIR(it, visibleItems())) btns.push(`<button data-act="cavern" data-id="${it.id}" class="grad">${t('openCavern')}</button>`);
   }
   if (it.type === 'ir') btns.push(`<button data-act="listen" data-id="${it.id}" class="grad">${t('listenHere')}</button>`);
-  // Sound file link for live coding (e.g. Strudel samples()); members only, so the raw links are not handed to every visitor.
-  if (u && (it.type === 'audio' || it.type === 'ir') && it.media?.url) btns.push(`<button data-act="copylink" data-id="${it.id}" title="${esc(t('copyLinkHint'))}">${t('copyLink')}</button>`);
+  // File link (full-size original) for live coding / reuse (e.g. Strudel samples()); members only, so the raw links are not handed to every visitor.
+  if (u && ['audio', 'ir', 'photo', 'pano'].includes(it.type) && it.media?.url) btns.push(`<button data-act="copylink" data-id="${it.id}" title="${esc(t('copyLinkHint'))}">${t('copyLink')}</button>`);
   if (u && state.config.canWrite) {
     if (canEditItem(u, it)) btns.push(`<button data-act="edit" data-id="${it.id}">${t('edit')}</button>`);
     if (isStaff(u)) btns.push(`<button data-act="${it.hidden ? 'unhide' : 'hide'}" data-id="${it.id}">${t(it.hidden ? 'unhide' : 'hide')}</button>`);

@@ -1,5 +1,16 @@
 # METIS change log
 
+## 2026-11-24 — v1.1.4 copy-link button on photos and 360° images
+
+**Changed**
+- The "Copier le lien / Copy link" button (members only) is now also on photo and 360° cards (Galerie), not only sounds and
+  IRs. It copies the full-size original on Cloudinary (not the thumbnail). Hint text no longer says "son". Videos are
+  YouTube/Vimeo links and keep no button.
+
+**Tested** (headless Chrome, local static copy with a fake member): 10/10. Buttons exactly on photo + 360° (Galerie), sound
+(Sons) and IR (Acoustique) cards, none on texts; each copies the original file URL and confirms; images load cross-origin
+(ACAO *); no button anywhere when logged out; no console errors. Unit tests 36/36.
+
 ## 2026-11-24 — v1.1.4 10 s METIS sweep (was 1.5 s) + tail-trim fix after sweep deconvolution
 
 **Changed**

@@ -87,7 +87,7 @@
   "f_linkIR": "Linked impulse response (CAVERN)",
   "listenHere": "Listen to this acoustics",
   "copyLink": "Copy link",
-  "copyLinkHint": "Copies the sound file’s address (for Strudel, etc.)",
+  "copyLinkHint": "Copies the file’s address (for Strudel, etc.)",
   "linkCopied": "Link copied ✓",
   "copyLinkManual": "Copy the link:",
   "noIR": "No impulse response here yet. Add one to listen to the acoustics of this place.",
